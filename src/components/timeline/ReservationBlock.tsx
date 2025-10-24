@@ -2,7 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import type { Reservation } from '@/types';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 import { slotToPx, computeXForSlotAndDay, getSlotsPerDay, slotToIso } from '@/lib/timeUtils';
 
 interface ReservationBlockProps {

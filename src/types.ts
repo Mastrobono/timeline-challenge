@@ -59,7 +59,9 @@ export interface TimelineConfig {
   startHour: number; // 11
   endHour: number; // 24 (or 0 for midnight)
   slotMinutes: Minutes; // 15
-  viewMode: 'day' | '3-day' | 'week';
+  slotWidth: number; // px width of one slot
+  viewMode: 'day' | '3-day' | 'week' | 'month';
+  timezone: string; // e.g. "America/Argentina/Buenos_Aires"
 }
 
 export interface RestaurantConfig {
@@ -77,3 +79,5 @@ export interface RestaurantConfig {
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
+export type OccupiedSlotsMap = Record<Table['id'], Set<number>>;

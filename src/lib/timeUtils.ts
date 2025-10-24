@@ -1,14 +1,6 @@
 import { addMinutes, differenceInMinutes, addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-
-export interface TimelineConfig {
-  date: string;            // "YYYY-MM-DD"
-  startHour: number;       // e.g. 8
-  endHour: number;         // e.g. 23
-  slotMinutes: number;     // e.g. 15
-  slotWidth: number;       // px width of one slot
-  timezone: string;        // e.g. "America/Argentina/Buenos_Aires"
-}
+import { TimelineConfig } from '@/types';
 
 /**
  * Convert a slot index to minutes from midnight in the configured timezone

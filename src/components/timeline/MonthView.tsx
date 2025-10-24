@@ -47,7 +47,8 @@ export default function MonthView() {
         endHour: restaurantConfig?.operatingHours.endHour || 23,
         slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
         slotWidth: 30,
-        timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires'
+        timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
+        viewMode: 'month',
       });
       
       // Check if reservation is on the correct date

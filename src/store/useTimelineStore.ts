@@ -402,7 +402,8 @@ export const getValidReservationsForSector = (
       endHour: restaurantConfig?.operatingHours.endHour || 23,
       slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
       slotWidth: 30,
-      timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires'
+      timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
+      viewMode: 'day',
     });
     
     if (reservationDate !== date) return false;

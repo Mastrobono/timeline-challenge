@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Table, Reservation } from '@/types';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 import { ROW_HEIGHT } from '@/lib/constants';
 import ReservationBlock from './ReservationBlock';
 

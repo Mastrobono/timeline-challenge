@@ -1,6 +1,6 @@
 import React from 'react';
 import { addDays, format } from 'date-fns';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 import { slotToPx, getSlotsPerDay } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
 

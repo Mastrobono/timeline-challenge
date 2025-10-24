@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import type { Table, Reservation, Sector } from '@/types';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 import { getSlotsPerDay, getReservationIsoDate, getCurrentTimePosition } from '@/lib/timeUtils';
 import { ROW_HEIGHT, HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/lib/constants';
 import useTimelineStore, { getValidReservationsForSector } from '@/store/useTimelineStore';
@@ -62,6 +62,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
       slotMinutes: 15,
       slotWidth: slotWidth,
       timezone: 'America/Argentina/Buenos_Aires',
+      viewMode: 'day',
     };
     
     const finalConfig = config || defaultConfig;

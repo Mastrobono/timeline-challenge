@@ -7,8 +7,8 @@ import {
     slotToPx,
     pxToSlot,
     getCurrentTimePosition,
-    type TimelineConfig
 } from '@/lib/timeUtils';
+import { TimelineConfig } from '@/types';
 
 describe('timeUtils', () => {
     const testConfig: TimelineConfig = {
@@ -17,7 +17,8 @@ describe('timeUtils', () => {
         endHour: 23,
         slotMinutes: 15,
         slotWidth: 60,
-        timezone: 'America/Argentina/Buenos_Aires'
+        timezone: 'America/Argentina/Buenos_Aires',
+        viewMode: 'day',
     };
 
     describe('slotToMinutes', () => {
