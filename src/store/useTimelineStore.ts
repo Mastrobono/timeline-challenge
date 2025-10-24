@@ -1,30 +1,41 @@
 import { create } from 'zustand';
-import type { Table, Sector, Reservation, TableId, SectorId, ReservationId } from '@/types';
+import { addDays, addWeeks, addMonths, startOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { getTodayInTimezone, getReservationIsoDate } from '@/lib/timeUtils';
+import type { Table, Sector, Reservation, UUID, RestaurantConfig } from '@/types';
 
 export interface TimelineState {
-  reservationsById: Record<ReservationId, Reservation>;
-  reservationsByTable: Record<TableId, ReservationId[]>;
-  tablesById: Record<TableId, Table>;
-  sectorsById: Record<SectorId, Sector>;
+  reservationsById: Record<UUID, Reservation>;
+  reservationsByTable: Record<UUID, UUID[]>;
+  tablesById: Record<UUID, Table>;
+  sectorsById: Record<UUID, Sector>;
+  restaurantConfig: RestaurantConfig | null;
   ui: {
     slotWidth: number;
     zoom: number;
-    collapsedSectors: Record<SectorId, boolean>;
+    collapsedSectors: Record<UUID, boolean>;
     visibleDate: string;
+    viewMode: 'day' | '3-day' | 'week' | 'month';
+    startHour: number;
   };
 }
 
 export interface TimelineActions {
   addReservation: (reservation: Reservation) => void;
-  updateReservation: (resId: ReservationId, patch: Partial<Reservation>) => void;
-  deleteReservation: (resId: ReservationId) => void;
-  insertReservationToTableIndex: (tableId: TableId, resId: ReservationId) => void;
-  removeReservationFromTable: (tableId: TableId, resId: ReservationId) => void;
+  updateReservation: (resId: UUID, patch: Partial<Reservation>) => void;
+  deleteReservation: (resId: UUID) => void;
+  insertReservationToTableIndex: (tableId: UUID, resId: UUID) => void;
+  removeReservationFromTable: (tableId: UUID, resId: UUID) => void;
   upsertTable: (table: Table) => void;
   upsertSector: (sector: Sector) => void;
+  setRestaurantConfig: (config: RestaurantConfig) => void;
   setSlotWidth: (px: number) => void;
   setVisibleDate: (date: string) => void;
-  toggleSectorCollapse: (sectorId: SectorId) => void;
+  toggleSectorCollapse: (sectorId: UUID) => void;
+  setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => void;
+  goToNextPeriod: () => void;
+  goToPrevPeriod: () => void;
+  goToToday: () => void;
 }
 
 export type TimelineStore = TimelineState & TimelineActions;
@@ -40,15 +51,15 @@ export type TimelineStore = TimelineState & TimelineActions;
  * const insertIndex = findInsertIndex(tableReservations, newReservation, reservationsById);
  */
 export function findInsertIndex(
-  reservationIds: ReservationId[],
+  reservationIds: UUID[],
   reservation: Reservation,
-  reservationsById: Record<ReservationId, Reservation>
+  reservationsById: Record<UUID, Reservation>
 ): number {
-  const { startSlot } = reservation;
+  const { startTime } = reservation;
   
   for (let i = 0; i < reservationIds.length; i++) {
     const existingReservation = reservationsById[reservationIds[i]];
-    if (existingReservation && existingReservation.startSlot > startSlot) {
+    if (existingReservation && existingReservation.startTime > startTime) {
       return i;
     }
   }
@@ -56,17 +67,20 @@ export function findInsertIndex(
   return reservationIds.length;
 }
 
-const useTimelineStore = create<TimelineStore>((set, get) => ({
+const useTimelineStore = create<TimelineStore>((set) => ({
   // Initial state
   reservationsById: {},
   reservationsByTable: {},
   tablesById: {},
   sectorsById: {},
+  restaurantConfig: null,
   ui: {
-    slotWidth: 60,
+    slotWidth: 60, // Increased back to 60 for better visibility
     zoom: 1,
     collapsedSectors: {},
-    visibleDate: new Date().toISOString().split('T')[0], // "2024-01-15"
+    visibleDate: '2025-10-21', // October 21, 2025
+    viewMode: 'day',
+    startHour: 7, // Restaurant opens at 7am
   },
 
   // Actions
@@ -98,14 +112,14 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
     });
   },
 
-  updateReservation: (resId: ReservationId, patch: Partial<Reservation>) => {
+  updateReservation: (resId: UUID, patch: Partial<Reservation>) => {
     set((state) => {
       const existingReservation = state.reservationsById[resId];
       if (!existingReservation) return state;
 
       const updatedReservation = { ...existingReservation, ...patch };
-      const { tableId: oldTableId, startSlot: oldStartSlot } = existingReservation;
-      const { tableId: newTableId, startSlot: newStartSlot } = updatedReservation;
+      const { tableId: oldTableId, startTime: oldStartTime } = existingReservation;
+      const { tableId: newTableId, startTime: newStartTime } = updatedReservation;
 
       // Update reservationsById
       const newReservationsById = {
@@ -115,8 +129,8 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
 
       let newReservationsByTable = { ...state.reservationsByTable };
 
-      // If tableId or startSlot changed, we need to move the reservation
-      if (oldTableId !== newTableId || oldStartSlot !== newStartSlot) {
+      // If tableId or startTime changed, we need to move the reservation
+      if (oldTableId !== newTableId || oldStartTime !== newStartTime) {
         // Remove from old table
         newReservationsByTable = {
           ...newReservationsByTable,
@@ -144,7 +158,7 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
     });
   },
 
-  deleteReservation: (resId: ReservationId) => {
+  deleteReservation: (resId: UUID) => {
     set((state) => {
       const reservation = state.reservationsById[resId];
       if (!reservation) return state;
@@ -152,7 +166,8 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
       const { tableId } = reservation;
 
       // Remove from reservationsById
-      const { [resId]: deleted, ...newReservationsById } = state.reservationsById;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [resId]: _, ...newReservationsById } = state.reservationsById;
 
       // Remove from reservationsByTable
       const newReservationsByTable = {
@@ -168,7 +183,7 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
     });
   },
 
-  insertReservationToTableIndex: (tableId: TableId, resId: ReservationId) => {
+  insertReservationToTableIndex: (tableId: UUID, resId: UUID) => {
     set((state) => {
       const reservation = state.reservationsById[resId];
       if (!reservation) return state;
@@ -189,7 +204,7 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
     });
   },
 
-  removeReservationFromTable: (tableId: TableId, resId: ReservationId) => {
+  removeReservationFromTable: (tableId: UUID, resId: UUID) => {
     set((state) => {
       const tableReservations = state.reservationsByTable[tableId] || [];
       const filteredReservations = tableReservations.filter(id => id !== resId);
@@ -244,7 +259,7 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
     }));
   },
 
-  toggleSectorCollapse: (sectorId: SectorId) => {
+  toggleSectorCollapse: (sectorId: UUID) => {
     set((state) => ({
       ...state,
       ui: {
@@ -256,6 +271,155 @@ const useTimelineStore = create<TimelineStore>((set, get) => ({
       },
     }));
   },
+
+  setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => {
+    set((state) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        viewMode: mode,
+      },
+    }));
+  },
+
+  goToNextPeriod: () => {
+    set((state) => {
+      const { visibleDate, viewMode } = state.ui;
+      const currentDate = new Date(visibleDate);
+      const timezone = 'America/Argentina/Buenos_Aires';
+      
+      let newDate: Date;
+      
+      switch (viewMode) {
+        case 'day':
+          newDate = addDays(currentDate, 1);
+          break;
+        case '3-day':
+          newDate = addDays(currentDate, 3);
+          break;
+        case 'week':
+          newDate = addWeeks(currentDate, 1);
+          break;
+        case 'month':
+          newDate = addMonths(currentDate, 1);
+          break;
+        default:
+          newDate = currentDate;
+      }
+      
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          visibleDate: newDate.toISOString().split('T')[0],
+        },
+      };
+    });
+  },
+
+  goToPrevPeriod: () => {
+    set((state) => {
+      const { visibleDate, viewMode } = state.ui;
+      const currentDate = new Date(visibleDate);
+      const timezone = 'America/Argentina/Buenos_Aires';
+      
+      let newDate: Date;
+      
+      switch (viewMode) {
+        case 'day':
+          newDate = addDays(currentDate, -1);
+          break;
+        case '3-day':
+          newDate = addDays(currentDate, -3);
+          break;
+        case 'week':
+          newDate = addWeeks(currentDate, -1);
+          break;
+        case 'month':
+          newDate = addMonths(currentDate, -1);
+          break;
+        default:
+          newDate = currentDate;
+      }
+      
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          visibleDate: newDate.toISOString().split('T')[0],
+        },
+      };
+    });
+  },
+
+  goToToday: () => {
+    set((state) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        visibleDate: getTodayInTimezone('America/Argentina/Buenos_Aires'),
+      },
+    }));
+  },
+
+  setRestaurantConfig: (config: RestaurantConfig) => {
+    set((state) => ({
+      ...state,
+      restaurantConfig: config,
+      ui: {
+        ...state.ui,
+        startHour: config.operatingHours.startHour,
+        slotWidth: config.slotConfiguration.defaultSlotWidth,
+      },
+    }));
+  },
+
 }));
+
+// Helper function to get valid reservations for a sector
+export const getValidReservationsForSector = (
+  sectorId: UUID, 
+  date: string, 
+  state: TimelineState
+): number => {
+  const { reservationsById, tablesById, restaurantConfig, ui } = state;
+  
+  // Count valid reservations for this sector on the given date
+  const validReservations = Object.values(reservationsById).filter((reservation) => {
+    // Type guard to ensure reservation is of type Reservation
+    if (!reservation || typeof reservation !== 'object' || !('tableId' in reservation)) return false;
+    
+    const res = reservation as Reservation;
+    
+    // Check if reservation is for a table in this sector
+    const table = tablesById[res.tableId];
+    if (!table || table.sectorId !== sectorId) return false;
+    
+    // Check if reservation is for the correct date
+    const reservationDate = getReservationIsoDate(res, date, {
+      date: date,
+      startHour: restaurantConfig?.operatingHours.startHour || ui.startHour,
+      endHour: restaurantConfig?.operatingHours.endHour || 23,
+      slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
+      slotWidth: 30,
+      timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires'
+    });
+    
+    if (reservationDate !== date) return false;
+    
+    // Filter out reservations outside restaurant hours
+    if (res.startTime) {
+      const startTime = new Date(res.startTime);
+      const reservationHour = startTime.getHours();
+      const restaurantStartHour = restaurantConfig?.operatingHours.startHour || ui.startHour;
+      const restaurantEndHour = restaurantConfig?.operatingHours.endHour || 23;
+      return reservationHour >= restaurantStartHour && reservationHour < restaurantEndHour;
+    }
+    
+    return true;
+  });
+  
+  return validReservations.length;
+};
 
 export default useTimelineStore;

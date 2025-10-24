@@ -1,5 +1,5 @@
-import { addMinutes, differenceInMinutes } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { addMinutes, differenceInMinutes, addDays, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
 export interface TimelineConfig {
   date: string;            // "YYYY-MM-DD"
@@ -72,4 +72,73 @@ export function slotToPx(slotIndex: number, config: TimelineConfig): number {
  */
 export function pxToSlot(x: number, config: TimelineConfig): number {
   return Math.floor(x / config.slotWidth);
+}
+
+/**
+ * Get the number of slots per day based on configuration
+ */
+export function getSlotsPerDay(config: TimelineConfig): number {
+  return (config.endHour - config.startHour) * (60 / config.slotMinutes);
+}
+
+/**
+ * Compute X position for a slot within a specific day
+ */
+export function computeXForSlotAndDay(slotInDay: number, dayIndex: number, config: TimelineConfig): number {
+  const slotsPerDay = getSlotsPerDay(config);
+  const totalSlotIndex = (dayIndex * slotsPerDay) + slotInDay;
+  return slotToPx(totalSlotIndex, config);
+}
+
+/**
+ * Get the ISO date string for a reservation based on its properties
+ * Extracts date from startTime (ISO format) or falls back to baseDate
+ */
+export function getReservationIsoDate(reservation: any, baseDate: string, config: TimelineConfig): string {
+  // Extract date from startTime (ISO format)
+  if (reservation.startTime) {
+    return reservation.startTime.split('T')[0]; // Get YYYY-MM-DD part
+  }
+  
+  // Fallback to baseDate if no startTime
+  return baseDate;
+}
+
+/**
+ * Format a date string for display in the restaurant timezone
+ */
+export function formatDateForDisplay(dateString: string, timezone: string): string {
+  const date = new Date(dateString + 'T00:00:00Z');
+  const zonedDate = toZonedTime(date, timezone);
+  return format(zonedDate, 'EEE, MMM d yyyy');
+}
+
+/**
+ * Get today's date in the restaurant timezone
+ */
+export function getTodayInTimezone(timezone: string): string {
+  const now = new Date();
+  const zonedNow = toZonedTime(now, timezone);
+  return format(zonedNow, 'yyyy-MM-dd');
+}
+
+/**
+ * Calculate the position for current time indicator
+ */
+export function getCurrentTimePosition(config: TimelineConfig): number | null {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Check if current time is within visible range
+  if (currentHour < config.startHour || currentHour >= config.endHour) {
+    return null;
+  }
+  
+  // Calculate position in pixels
+  const hoursFromStart = currentHour - config.startHour;
+  const minutesFromStart = hoursFromStart * 60 + currentMinute;
+  const slotsFromStart = minutesFromStart / config.slotMinutes;
+  
+  return slotsFromStart * config.slotWidth;
 }

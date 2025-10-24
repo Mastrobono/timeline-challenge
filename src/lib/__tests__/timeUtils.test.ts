@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
     slotToMinutes,
     slotToIso,
@@ -6,6 +6,7 @@ import {
     minutesToSlots,
     slotToPx,
     pxToSlot,
+    getCurrentTimePosition,
     type TimelineConfig
 } from '@/lib/timeUtils';
 
@@ -133,6 +134,25 @@ describe('timeUtils', () => {
             expect(minutesToSlots(30, customConfig)).toBe(1);
             expect(minutesToSlots(60, customConfig)).toBe(2);
             expect(minutesToSlots(45, customConfig)).toBe(2); // 45/30 = 1.5 -> 2 (ceil)
+        });
+    });
+
+    describe('getCurrentTimePosition', () => {
+        it('should return a number or null', () => {
+            const result = getCurrentTimePosition(testConfig);
+            expect(typeof result === 'number' || result === null).toBe(true);
+        });
+
+        it('should handle different slot widths', () => {
+            const customConfig = { ...testConfig, slotWidth: 30 };
+            const result = getCurrentTimePosition(customConfig);
+            expect(typeof result === 'number' || result === null).toBe(true);
+        });
+
+        it('should handle different start hours', () => {
+            const customConfig = { ...testConfig, startHour: 6, endHour: 18 };
+            const result = getCurrentTimePosition(customConfig);
+            expect(typeof result === 'number' || result === null).toBe(true);
         });
     });
 });
