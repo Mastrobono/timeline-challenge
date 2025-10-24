@@ -1,6 +1,8 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { Reservation } from '@/types';
 import type { TimelineConfig } from '@/types';
 import { slotToPx, computeXForSlotAndDay, getSlotsPerDay, slotToIso } from '@/lib/timeUtils';
@@ -19,6 +21,19 @@ const statusColors = {
 
 export default function ReservationBlock({ reservation, config }: ReservationBlockProps) {
   const { startTime, endTime, customer, partySize, status, priority } = reservation;
+  
+  // DnD setup
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: reservation.id,
+    data: {
+      reservation,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 1000 : 10,
+  };
   
   // Convert ISO times to slot positions
   const startDate = new Date(startTime);
@@ -63,13 +78,19 @@ export default function ReservationBlock({ reservation, config }: ReservationBlo
   
   return (
     <div
-      data-reservation-id={reservation.id}
-      className={`absolute left-0 rounded px-2 py-1 text-xs font-medium ${priorityColors[priority]} text-white border border-gray-200 shadow-sm z-10`}
+      ref={setNodeRef}
       style={{
+        ...style,
         left: `${left}px`,
         width: `${width}px`,
         height: '60px', // Full row height
       }}
+      {...listeners}
+      {...attributes}
+      data-reservation-id={reservation.id}
+      className={`absolute left-0 rounded px-2 py-1 text-xs font-medium ${priorityColors[priority]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-50' : ''
+      }`}
       title={`${customer.name} (${partySize} people) - ${timeString}`}
     >
       <div className="truncate font-semibold">{customer.name}</div>

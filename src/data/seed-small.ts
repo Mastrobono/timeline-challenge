@@ -28,7 +28,7 @@ export const seedTables: Table[] = [
     "sectorId": "sector-1",
     "name": "Table 1",
     "capacity": {
-      "min": 5,
+      "min": 3,
       "max": 6
     },
     "sortOrder": 1
@@ -39,7 +39,7 @@ export const seedTables: Table[] = [
     "name": "Table 2",
     "capacity": {
       "min": 2,
-      "max": 5
+      "max": 4
     },
     "sortOrder": 2
   },
@@ -48,8 +48,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-1",
     "name": "Table 3",
     "capacity": {
-      "min": 3,
-      "max": 6
+      "min": 4,
+      "max": 5
     },
     "sortOrder": 3
   },
@@ -58,8 +58,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-2",
     "name": "Table 4",
     "capacity": {
-      "min": 5,
-      "max": 6
+      "min": 4,
+      "max": 7
     },
     "sortOrder": 4
   },
@@ -68,8 +68,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-2",
     "name": "Table 5",
     "capacity": {
-      "min": 2,
-      "max": 5
+      "min": 3,
+      "max": 6
     },
     "sortOrder": 5
   },
@@ -78,8 +78,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-2",
     "name": "Table 6",
     "capacity": {
-      "min": 2,
-      "max": 4
+      "min": 3,
+      "max": 5
     },
     "sortOrder": 6
   },
@@ -88,8 +88,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-3",
     "name": "Table 7",
     "capacity": {
-      "min": 5,
-      "max": 7
+      "min": 2,
+      "max": 3
     },
     "sortOrder": 7
   },
@@ -98,8 +98,8 @@ export const seedTables: Table[] = [
     "sectorId": "sector-3",
     "name": "Table 8",
     "capacity": {
-      "min": 2,
-      "max": 4
+      "min": 5,
+      "max": 8
     },
     "sortOrder": 8
   }
@@ -108,633 +108,633 @@ export const seedTables: Table[] = [
 export const seedReservations: Reservation[] = [
   {
     "id": "res-1",
-    "tableId": "table-2",
+    "tableId": "table-6",
     "customer": {
-      "name": "Andrea Mendoza Moreno",
-      "phone": "+54-11-9012-3456",
-      "email": "andreamendozamoreno@hotmail.com"
+      "name": "Roberto Herrera Vega",
+      "phone": "+54-11-1212-3434",
+      "email": "robertoherreravega@yahoo.com"
     },
     "partySize": 4,
-    "startTime": "2025-10-24T23:30:00.000-03:00",
-    "endTime": "2025-10-25T01:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "CONFIRMED",
+    "startTime": "2025-10-19T22:00:00.000-03:00",
+    "endTime": "2025-10-19T23:00:00.000-03:00",
+    "durationMinutes": 60,
+    "status": "PENDING",
     "priority": "STANDARD",
-    "source": "phone",
-    "createdAt": "2025-10-24T20:12:00.000-03:00",
-    "updatedAt": "2025-10-24T20:12:00.000-03:00"
+    "source": "walkin",
+    "createdAt": "2025-10-19T14:20:00.000-03:00",
+    "updatedAt": "2025-10-19T14:20:00.000-03:00"
   },
   {
     "id": "res-2",
     "tableId": "table-3",
     "customer": {
-      "name": "Javier Torres Romero",
-      "phone": "+54-11-7890-1234",
-      "email": "javiertorresromero@hotmail.com"
+      "name": "Natalia Ortega Peña",
+      "phone": "+54-11-1234-5678",
+      "email": "nataliaortegapeña@outlook.com"
     },
-    "partySize": 1,
-    "startTime": "2025-10-23T11:00:00.000-03:00",
-    "endTime": "2025-10-23T12:00:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "SEATED",
-    "priority": "STANDARD",
+    "partySize": 3,
+    "startTime": "2025-10-19T21:30:00.000-03:00",
+    "endTime": "2025-10-19T23:30:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "NO_SHOW",
+    "priority": "LARGE_GROUP",
     "source": "walkin",
-    "createdAt": "2025-10-23T19:22:00.000-03:00",
-    "updatedAt": "2025-10-23T21:22:00.000-03:00"
+    "createdAt": "2025-10-19T15:00:00.000-03:00",
+    "updatedAt": "2025-10-19T15:00:00.000-03:00"
   },
   {
     "id": "res-3",
-    "tableId": "table-4",
+    "tableId": "table-5",
     "customer": {
-      "name": "Teresa Molina Guerrero",
-      "phone": "+54-11-6789-0123",
-      "email": "teresamolinaguerrero@live.com"
+      "name": "Miguel González Martínez",
+      "phone": "+54-11-9999-0000",
+      "email": "miguelgonzálezmartínez@live.com"
     },
-    "partySize": 5,
-    "startTime": "2025-10-24T21:30:00.000-03:00",
-    "endTime": "2025-10-25T00:30:00.000-03:00",
-    "durationMinutes": 180,
-    "status": "CANCELLED",
-    "priority": "VIP",
-    "source": "web",
-    "createdAt": "2025-10-24T21:56:00.000-03:00",
-    "updatedAt": "2025-10-24T21:56:00.000-03:00"
+    "partySize": 2,
+    "startTime": "2025-10-19T14:00:00.000-03:00",
+    "endTime": "2025-10-19T16:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "PENDING",
+    "priority": "LARGE_GROUP",
+    "source": "walkin",
+    "createdAt": "2025-10-19T11:00:00.000-03:00",
+    "updatedAt": "2025-10-19T11:00:00.000-03:00"
   },
   {
     "id": "res-4",
-    "tableId": "table-8",
+    "tableId": "table-6",
     "customer": {
-      "name": "Hugo Aguilar Herrera",
-      "phone": "+54-11-1111-2222",
-      "email": "hugoaguilarherrera@gmail.com"
+      "name": "Daniel Campos Torres",
+      "phone": "+54-11-7777-8888",
+      "email": "danielcampostorres@outlook.com"
     },
-    "partySize": 6,
-    "startTime": "2025-10-24T16:00:00.000-03:00",
-    "endTime": "2025-10-24T19:00:00.000-03:00",
-    "durationMinutes": 180,
-    "status": "CONFIRMED",
-    "priority": "VIP",
-    "source": "phone",
-    "createdAt": "2025-10-24T16:42:00.000-03:00",
-    "updatedAt": "2025-10-24T16:42:00.000-03:00"
+    "partySize": 2,
+    "startTime": "2025-10-23T22:00:00.000-03:00",
+    "endTime": "2025-10-24T00:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "PENDING",
+    "priority": "STANDARD",
+    "source": "walkin",
+    "createdAt": "2025-10-23T18:04:00.000-03:00",
+    "updatedAt": "2025-10-23T18:04:00.000-03:00"
   },
   {
     "id": "res-5",
-    "tableId": "table-8",
+    "tableId": "table-6",
     "customer": {
-      "name": "Carlos López Pérez",
-      "phone": "+54-11-9999-0000",
-      "email": "carloslópezpérez@outlook.com"
+      "name": "Ana García Rojas",
+      "phone": "+54-11-3456-7890",
+      "email": "anagarcíarojas@hotmail.com"
     },
     "partySize": 4,
-    "startTime": "2025-10-24T20:30:00.000-03:00",
-    "endTime": "2025-10-24T21:30:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "PENDING",
+    "startTime": "2025-10-24T13:00:00.000-03:00",
+    "endTime": "2025-10-24T16:00:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "NO_SHOW",
     "priority": "LARGE_GROUP",
     "source": "phone",
-    "createdAt": "2025-10-24T14:23:00.000-03:00",
-    "updatedAt": "2025-10-24T14:23:00.000-03:00"
+    "createdAt": "2025-10-24T15:33:00.000-03:00",
+    "updatedAt": "2025-10-24T15:33:00.000-03:00"
   },
   {
     "id": "res-6",
-    "tableId": "table-5",
+    "tableId": "table-2",
     "customer": {
-      "name": "Mónica Flores Vargas",
-      "phone": "+54-11-4567-8901",
-      "email": "mónicafloresvargas@yahoo.com"
+      "name": "Adrián Cabrera Ramos",
+      "phone": "+54-11-7777-8888",
+      "email": "adriáncabreraramos@yahoo.com"
     },
-    "partySize": 2,
-    "startTime": "2025-10-21T10:00:00.000-03:00",
-    "endTime": "2025-10-21T13:00:00.000-03:00",
+    "partySize": 3,
+    "startTime": "2025-10-24T22:30:00.000-03:00",
+    "endTime": "2025-10-25T01:30:00.000-03:00",
     "durationMinutes": 180,
-    "status": "NO_SHOW",
-    "priority": "LARGE_GROUP",
+    "status": "FINISHED",
+    "priority": "VIP",
     "source": "app",
-    "createdAt": "2025-10-21T22:31:00.000-03:00",
-    "updatedAt": "2025-10-21T22:31:00.000-03:00"
+    "createdAt": "2025-10-24T18:16:00.000-03:00",
+    "updatedAt": "2025-10-24T19:16:00.000-03:00"
   },
   {
     "id": "res-7",
-    "tableId": "table-8",
+    "tableId": "table-6",
     "customer": {
-      "name": "Álvaro Serrano Ortega",
-      "phone": "+54-11-3456-7890",
-      "email": "álvaroserranoortega@gmail.com"
+      "name": "Elena Moreno Moreno",
+      "phone": "+54-11-1234-5678",
+      "email": "elenamorenomoreno@outlook.com"
     },
     "partySize": 3,
-    "startTime": "2025-10-25T01:00:00.000-03:00",
-    "endTime": "2025-10-25T02:00:00.000-03:00",
-    "durationMinutes": 60,
+    "startTime": "2025-10-19T12:00:00.000-03:00",
+    "endTime": "2025-10-19T14:00:00.000-03:00",
+    "durationMinutes": 120,
     "status": "PENDING",
     "priority": "STANDARD",
     "source": "phone",
-    "createdAt": "2025-10-24T19:20:00.000-03:00",
-    "updatedAt": "2025-10-24T19:20:00.000-03:00"
+    "createdAt": "2025-10-19T16:54:00.000-03:00",
+    "updatedAt": "2025-10-19T16:54:00.000-03:00"
   },
   {
     "id": "res-8",
-    "tableId": "table-1",
+    "tableId": "table-5",
     "customer": {
-      "name": "Rubén Herrera Delgado",
+      "name": "Valeria Silva Guerrero",
       "phone": "+54-11-2345-6789",
-      "email": "rubénherreradelgado@hotmail.com"
+      "email": "valeriasilvaguerrero@live.com"
     },
-    "partySize": 3,
-    "startTime": "2025-10-19T18:30:00.000-03:00",
-    "endTime": "2025-10-19T21:30:00.000-03:00",
-    "durationMinutes": 180,
+    "partySize": 2,
+    "startTime": "2025-10-24T23:30:00.000-03:00",
+    "endTime": "2025-10-25T00:30:00.000-03:00",
+    "durationMinutes": 60,
     "status": "PENDING",
-    "priority": "STANDARD",
-    "source": "phone",
-    "createdAt": "2025-10-19T14:17:00.000-03:00",
-    "updatedAt": "2025-10-19T14:17:00.000-03:00"
+    "priority": "LARGE_GROUP",
+    "source": "app",
+    "createdAt": "2025-10-24T18:30:00.000-03:00",
+    "updatedAt": "2025-10-24T18:30:00.000-03:00"
   },
   {
     "id": "res-9",
-    "tableId": "table-4",
+    "tableId": "table-1",
     "customer": {
-      "name": "Adrián Cabrera Molina",
-      "phone": "+54-11-1111-2222",
-      "email": "adriáncabreramolina@outlook.com"
+      "name": "Raquel Vargas Castro",
+      "phone": "+54-11-5656-7878",
+      "email": "raquelvargascastro@outlook.com"
     },
-    "partySize": 3,
-    "startTime": "2025-10-24T16:30:00.000-03:00",
-    "endTime": "2025-10-24T17:30:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "NO_SHOW",
-    "priority": "LARGE_GROUP",
-    "source": "web",
-    "createdAt": "2025-10-24T11:00:00.000-03:00",
-    "updatedAt": "2025-10-24T11:00:00.000-03:00"
+    "partySize": 4,
+    "startTime": "2025-10-22T22:30:00.000-03:00",
+    "endTime": "2025-10-23T01:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "PENDING",
+    "priority": "STANDARD",
+    "source": "app",
+    "createdAt": "2025-10-22T14:29:00.000-03:00",
+    "updatedAt": "2025-10-22T14:29:00.000-03:00"
   },
   {
     "id": "res-10",
-    "tableId": "table-3",
+    "tableId": "table-2",
     "customer": {
-      "name": "David Jiménez Rojas",
-      "phone": "+54-11-5555-6666",
-      "email": "davidjiménezrojas@gmail.com"
+      "name": "Sebastián Vega Torres",
+      "phone": "+54-11-6789-0123",
+      "email": "sebastiánvegatorres@yahoo.com"
     },
-    "partySize": 1,
-    "startTime": "2025-10-19T15:30:00.000-03:00",
-    "endTime": "2025-10-19T17:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "FINISHED",
-    "priority": "LARGE_GROUP",
-    "source": "walkin",
-    "createdAt": "2025-10-19T20:16:00.000-03:00",
-    "updatedAt": "2025-10-19T23:16:00.000-03:00"
-  },
-  {
-    "id": "res-11",
-    "tableId": "table-6",
-    "customer": {
-      "name": "Teresa Molina Herrera",
-      "phone": "+54-11-3456-7890",
-      "email": "teresamolinaherrera@gmail.com"
-    },
-    "partySize": 1,
-    "startTime": "2025-10-24T23:00:00.000-03:00",
-    "endTime": "2025-10-25T00:00:00.000-03:00",
+    "partySize": 6,
+    "startTime": "2025-10-24T22:00:00.000-03:00",
+    "endTime": "2025-10-24T23:00:00.000-03:00",
     "durationMinutes": 60,
-    "status": "CANCELLED",
-    "priority": "LARGE_GROUP",
-    "source": "app",
-    "createdAt": "2025-10-24T11:00:00.000-03:00",
-    "updatedAt": "2025-10-24T11:00:00.000-03:00"
-  },
-  {
-    "id": "res-12",
-    "tableId": "table-8",
-    "customer": {
-      "name": "Elena Moreno Vargas",
-      "phone": "+54-11-8901-2345",
-      "email": "elenamorenovargas@yahoo.com"
-    },
-    "partySize": 2,
-    "startTime": "2025-10-24T12:30:00.000-03:00",
-    "endTime": "2025-10-24T13:30:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "PENDING",
-    "priority": "LARGE_GROUP",
-    "source": "app",
-    "createdAt": "2025-10-24T12:16:00.000-03:00",
-    "updatedAt": "2025-10-24T12:16:00.000-03:00"
-  },
-  {
-    "id": "res-13",
-    "tableId": "table-8",
-    "customer": {
-      "name": "María Rodríguez Romero",
-      "phone": "+54-11-1212-3434",
-      "email": "maríarodríguezromero@outlook.com"
-    },
-    "partySize": 2,
-    "startTime": "2025-10-22T15:30:00.000-03:00",
-    "endTime": "2025-10-22T18:30:00.000-03:00",
-    "durationMinutes": 180,
     "status": "SEATED",
     "priority": "STANDARD",
     "source": "app",
-    "createdAt": "2025-10-22T12:37:00.000-03:00",
-    "updatedAt": "2025-10-22T14:37:00.000-03:00"
+    "createdAt": "2025-10-24T14:50:00.000-03:00",
+    "updatedAt": "2025-10-24T17:50:00.000-03:00"
   },
   {
-    "id": "res-14",
-    "tableId": "table-1",
+    "id": "res-11",
+    "tableId": "table-3",
     "customer": {
-      "name": "Rubén Herrera Romero",
-      "phone": "+54-11-9012-3456",
-      "email": "rubénherreraromero@gmail.com"
-    },
-    "partySize": 4,
-    "startTime": "2025-10-24T21:30:00.000-03:00",
-    "endTime": "2025-10-25T00:30:00.000-03:00",
-    "durationMinutes": 180,
-    "status": "PENDING",
-    "priority": "STANDARD",
-    "source": "phone",
-    "createdAt": "2025-10-24T19:30:00.000-03:00",
-    "updatedAt": "2025-10-24T19:30:00.000-03:00"
-  },
-  {
-    "id": "res-15",
-    "tableId": "table-2",
-    "customer": {
-      "name": "Laura Sánchez Guerrero",
-      "phone": "+54-11-9012-3456",
-      "email": "laurasánchezguerrero@yahoo.com"
+      "name": "Valeria Silva Vega",
+      "phone": "+54-11-1111-2222",
+      "email": "valeriasilvavega@gmail.com"
     },
     "partySize": 5,
-    "startTime": "2025-10-21T22:00:00.000-03:00",
-    "endTime": "2025-10-21T23:00:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "FINISHED",
-    "priority": "STANDARD",
-    "source": "app",
-    "createdAt": "2025-10-21T14:34:00.000-03:00",
-    "updatedAt": "2025-10-21T17:34:00.000-03:00"
-  },
-  {
-    "id": "res-16",
-    "tableId": "table-2",
-    "customer": {
-      "name": "Fernando Ramos López",
-      "phone": "+54-11-9999-0000",
-      "email": "fernandoramoslópez@gmail.com"
-    },
-    "partySize": 3,
-    "startTime": "2025-10-24T13:30:00.000-03:00",
-    "endTime": "2025-10-24T15:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "PENDING",
-    "priority": "VIP",
-    "source": "walkin",
-    "createdAt": "2025-10-24T13:41:00.000-03:00",
-    "updatedAt": "2025-10-24T13:41:00.000-03:00"
-  },
-  {
-    "id": "res-17",
-    "tableId": "table-7",
-    "customer": {
-      "name": "Laura Sánchez Ramos",
-      "phone": "+54-11-5678-9012",
-      "email": "laurasánchezramos@outlook.com"
-    },
-    "partySize": 4,
-    "startTime": "2025-10-20T01:00:00.000-03:00",
-    "endTime": "2025-10-20T02:00:00.000-03:00",
+    "startTime": "2025-10-22T12:00:00.000-03:00",
+    "endTime": "2025-10-22T13:00:00.000-03:00",
     "durationMinutes": 60,
     "status": "NO_SHOW",
     "priority": "STANDARD",
+    "source": "app",
+    "createdAt": "2025-10-22T15:17:00.000-03:00",
+    "updatedAt": "2025-10-22T15:17:00.000-03:00"
+  },
+  {
+    "id": "res-12",
+    "tableId": "table-6",
+    "customer": {
+      "name": "Francisco Martín Cabrera",
+      "phone": "+54-11-1111-2222",
+      "email": "franciscomartíncabrera@gmail.com"
+    },
+    "partySize": 5,
+    "startTime": "2025-10-23T19:30:00.000-03:00",
+    "endTime": "2025-10-23T22:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "PENDING",
+    "priority": "STANDARD",
+    "source": "walkin",
+    "createdAt": "2025-10-23T17:34:00.000-03:00",
+    "updatedAt": "2025-10-23T17:34:00.000-03:00"
+  },
+  {
+    "id": "res-13",
+    "tableId": "table-5",
+    "customer": {
+      "name": "Carlos López Sánchez",
+      "phone": "+54-11-9012-3456",
+      "email": "carloslópezsánchez@live.com"
+    },
+    "partySize": 5,
+    "startTime": "2025-10-19T16:00:00.000-03:00",
+    "endTime": "2025-10-19T18:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "FINISHED",
+    "priority": "LARGE_GROUP",
     "source": "web",
+    "createdAt": "2025-10-19T18:38:00.000-03:00",
+    "updatedAt": "2025-10-19T22:38:00.000-03:00"
+  },
+  {
+    "id": "res-14",
+    "tableId": "table-7",
+    "customer": {
+      "name": "Sebastián Vega Moreno",
+      "phone": "+54-11-4567-8901",
+      "email": "sebastiánvegamoreno@live.com"
+    },
+    "partySize": 1,
+    "startTime": "2025-10-22T16:00:00.000-03:00",
+    "endTime": "2025-10-22T19:00:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "NO_SHOW",
+    "priority": "VIP",
+    "source": "app",
+    "createdAt": "2025-10-22T22:51:00.000-03:00",
+    "updatedAt": "2025-10-22T22:51:00.000-03:00"
+  },
+  {
+    "id": "res-15",
+    "tableId": "table-4",
+    "customer": {
+      "name": "Roberto Herrera Morales",
+      "phone": "+54-11-8901-2345",
+      "email": "robertoherreramorales@yahoo.com"
+    },
+    "partySize": 1,
+    "startTime": "2025-10-24T22:00:00.000-03:00",
+    "endTime": "2025-10-25T01:00:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "CANCELLED",
+    "priority": "STANDARD",
+    "source": "app",
+    "createdAt": "2025-10-24T18:27:00.000-03:00",
+    "updatedAt": "2025-10-24T18:27:00.000-03:00"
+  },
+  {
+    "id": "res-16",
+    "tableId": "table-1",
+    "customer": {
+      "name": "Sofia Reyes González",
+      "phone": "+54-11-9012-3456",
+      "email": "sofiareyesgonzález@gmail.com"
+    },
+    "partySize": 1,
+    "startTime": "2025-10-24T14:30:00.000-03:00",
+    "endTime": "2025-10-24T17:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "SEATED",
+    "priority": "LARGE_GROUP",
+    "source": "app",
+    "createdAt": "2025-10-24T14:25:00.000-03:00",
+    "updatedAt": "2025-10-24T16:25:00.000-03:00"
+  },
+  {
+    "id": "res-17",
+    "tableId": "table-2",
+    "customer": {
+      "name": "Laura Sánchez López",
+      "phone": "+54-11-0123-4567",
+      "email": "laurasánchezlópez@live.com"
+    },
+    "partySize": 3,
+    "startTime": "2025-10-24T19:30:00.000-03:00",
+    "endTime": "2025-10-24T22:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "SEATED",
+    "priority": "VIP",
+    "source": "web",
+    "createdAt": "2025-10-24T18:13:00.000-03:00",
+    "updatedAt": "2025-10-24T19:13:00.000-03:00"
+  },
+  {
+    "id": "res-18",
+    "tableId": "table-1",
+    "customer": {
+      "name": "Carlos López Ortega",
+      "phone": "+54-11-1111-2222",
+      "email": "carloslópezortega@live.com"
+    },
+    "partySize": 3,
+    "startTime": "2025-10-20T11:00:00.000-03:00",
+    "endTime": "2025-10-20T13:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "PENDING",
+    "priority": "LARGE_GROUP",
+    "source": "app",
+    "createdAt": "2025-10-20T22:20:00.000-03:00",
+    "updatedAt": "2025-10-20T22:20:00.000-03:00"
+  },
+  {
+    "id": "res-19",
+    "tableId": "table-3",
+    "customer": {
+      "name": "Sofia Reyes Aguilar",
+      "phone": "+54-11-5678-9012",
+      "email": "sofiareyesaguilar@gmail.com"
+    },
+    "partySize": 5,
+    "startTime": "2025-10-21T01:30:00.000-03:00",
+    "endTime": "2025-10-21T02:30:00.000-03:00",
+    "durationMinutes": 60,
+    "status": "NO_SHOW",
+    "priority": "LARGE_GROUP",
+    "source": "walkin",
+    "createdAt": "2025-10-20T15:03:00.000-03:00",
+    "updatedAt": "2025-10-20T15:03:00.000-03:00"
+  },
+  {
+    "id": "res-20",
+    "tableId": "table-2",
+    "customer": {
+      "name": "Sofia Reyes Molina",
+      "phone": "+54-11-5656-7878",
+      "email": "sofiareyesmolina@outlook.com"
+    },
+    "partySize": 5,
+    "startTime": "2025-10-19T15:00:00.000-03:00",
+    "endTime": "2025-10-19T16:00:00.000-03:00",
+    "durationMinutes": 60,
+    "status": "NO_SHOW",
+    "priority": "STANDARD",
+    "source": "phone",
     "createdAt": "2025-10-19T12:11:00.000-03:00",
     "updatedAt": "2025-10-19T12:11:00.000-03:00"
   },
   {
-    "id": "res-18",
-    "tableId": "table-8",
-    "customer": {
-      "name": "Rubén Herrera Herrera",
-      "phone": "+54-11-0123-4567",
-      "email": "rubénherreraherrera@gmail.com"
-    },
-    "partySize": 2,
-    "startTime": "2025-10-23T15:30:00.000-03:00",
-    "endTime": "2025-10-23T17:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "CANCELLED",
-    "priority": "VIP",
-    "source": "phone",
-    "createdAt": "2025-10-23T16:02:00.000-03:00",
-    "updatedAt": "2025-10-23T16:02:00.000-03:00"
-  },
-  {
-    "id": "res-19",
-    "tableId": "table-5",
-    "customer": {
-      "name": "Claudia Medina Cabrera",
-      "phone": "+54-11-4567-8901",
-      "email": "claudiamedinacabrera@gmail.com"
-    },
-    "partySize": 1,
-    "startTime": "2025-10-19T17:00:00.000-03:00",
-    "endTime": "2025-10-19T18:00:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "SEATED",
-    "priority": "VIP",
-    "source": "web",
-    "createdAt": "2025-10-19T21:47:00.000-03:00",
-    "updatedAt": "2025-10-20T01:47:00.000-03:00"
-  },
-  {
-    "id": "res-20",
-    "tableId": "table-5",
-    "customer": {
-      "name": "Javier Torres Sánchez",
-      "phone": "+54-11-1234-5678",
-      "email": "javiertorressánchez@hotmail.com"
-    },
-    "partySize": 2,
-    "startTime": "2025-10-19T19:00:00.000-03:00",
-    "endTime": "2025-10-19T20:00:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "CONFIRMED",
-    "priority": "LARGE_GROUP",
-    "source": "walkin",
-    "createdAt": "2025-10-19T17:50:00.000-03:00",
-    "updatedAt": "2025-10-19T17:50:00.000-03:00"
-  },
-  {
     "id": "res-21",
-    "tableId": "table-2",
+    "tableId": "table-4",
     "customer": {
-      "name": "Alejandro Castro Vega",
-      "phone": "+54-11-3456-7890",
-      "email": "alejandrocastrovega@yahoo.com"
+      "name": "Francisco Martín Herrera",
+      "phone": "+54-11-1234-5678",
+      "email": "franciscomartínherrera@live.com"
     },
-    "partySize": 2,
-    "startTime": "2025-10-24T12:30:00.000-03:00",
-    "endTime": "2025-10-24T14:30:00.000-03:00",
-    "durationMinutes": 120,
+    "partySize": 3,
+    "startTime": "2025-10-20T00:30:00.000-03:00",
+    "endTime": "2025-10-20T01:30:00.000-03:00",
+    "durationMinutes": 60,
     "status": "FINISHED",
-    "priority": "VIP",
-    "source": "app",
-    "createdAt": "2025-10-24T14:14:00.000-03:00",
-    "updatedAt": "2025-10-24T17:14:00.000-03:00"
+    "priority": "STANDARD",
+    "source": "web",
+    "createdAt": "2025-10-19T14:28:00.000-03:00",
+    "updatedAt": "2025-10-19T16:28:00.000-03:00"
   },
   {
     "id": "res-22",
-    "tableId": "table-7",
+    "tableId": "table-5",
     "customer": {
-      "name": "Carmen Pérez Peña",
-      "phone": "+54-11-8901-2345",
-      "email": "carmenpérezpeña@hotmail.com"
+      "name": "Patricia Navarro Ruiz",
+      "phone": "+54-11-5656-7878",
+      "email": "patricianavarroruiz@hotmail.com"
     },
-    "partySize": 6,
-    "startTime": "2025-10-20T00:00:00.000-03:00",
-    "endTime": "2025-10-20T01:00:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "SEATED",
-    "priority": "VIP",
-    "source": "phone",
-    "createdAt": "2025-10-19T13:19:00.000-03:00",
-    "updatedAt": "2025-10-19T14:19:00.000-03:00"
+    "partySize": 1,
+    "startTime": "2025-10-19T16:00:00.000-03:00",
+    "endTime": "2025-10-19T18:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "PENDING",
+    "priority": "LARGE_GROUP",
+    "source": "web",
+    "createdAt": "2025-10-19T17:38:00.000-03:00",
+    "updatedAt": "2025-10-19T17:38:00.000-03:00"
   },
   {
     "id": "res-23",
-    "tableId": "table-6",
+    "tableId": "table-7",
     "customer": {
-      "name": "Alejandro Castro Aguilar",
-      "phone": "+54-11-9090-1212",
-      "email": "alejandrocastroaguilar@gmail.com"
+      "name": "Sofia Reyes Espinoza",
+      "phone": "+54-11-0123-4567",
+      "email": "sofiareyesespinoza@gmail.com"
     },
-    "partySize": 3,
-    "startTime": "2025-10-20T16:00:00.000-03:00",
-    "endTime": "2025-10-20T18:00:00.000-03:00",
+    "partySize": 4,
+    "startTime": "2025-10-19T21:30:00.000-03:00",
+    "endTime": "2025-10-19T23:30:00.000-03:00",
     "durationMinutes": 120,
     "status": "NO_SHOW",
     "priority": "LARGE_GROUP",
-    "source": "web",
-    "createdAt": "2025-10-20T13:52:00.000-03:00",
-    "updatedAt": "2025-10-20T13:52:00.000-03:00"
+    "source": "walkin",
+    "createdAt": "2025-10-19T21:49:00.000-03:00",
+    "updatedAt": "2025-10-19T21:49:00.000-03:00"
   },
   {
     "id": "res-24",
-    "tableId": "table-1",
+    "tableId": "table-6",
     "customer": {
-      "name": "Teresa Molina Romero",
-      "phone": "+54-11-5678-9012",
-      "email": "teresamolinaromero@hotmail.com"
+      "name": "Mónica Flores Cabrera",
+      "phone": "+54-11-9012-3456",
+      "email": "mónicaflorescabrera@outlook.com"
     },
     "partySize": 5,
-    "startTime": "2025-10-22T16:30:00.000-03:00",
-    "endTime": "2025-10-22T19:30:00.000-03:00",
-    "durationMinutes": 180,
+    "startTime": "2025-10-19T10:30:00.000-03:00",
+    "endTime": "2025-10-19T11:30:00.000-03:00",
+    "durationMinutes": 60,
     "status": "FINISHED",
     "priority": "VIP",
-    "source": "phone",
-    "createdAt": "2025-10-22T12:01:00.000-03:00",
-    "updatedAt": "2025-10-22T15:01:00.000-03:00"
+    "source": "web",
+    "createdAt": "2025-10-19T21:31:00.000-03:00",
+    "updatedAt": "2025-10-20T00:31:00.000-03:00"
   },
   {
     "id": "res-25",
-    "tableId": "table-3",
+    "tableId": "table-8",
     "customer": {
-      "name": "Ana García Ruiz",
-      "phone": "+54-11-5555-6666",
-      "email": "anagarcíaruiz@hotmail.com"
+      "name": "Camila Espinoza Martínez",
+      "phone": "+54-11-5656-7878",
+      "email": "camilaespinozamartínez@gmail.com"
     },
-    "partySize": 6,
-    "startTime": "2025-10-21T15:30:00.000-03:00",
-    "endTime": "2025-10-21T17:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "FINISHED",
-    "priority": "VIP",
-    "source": "web",
-    "createdAt": "2025-10-21T22:34:00.000-03:00",
-    "updatedAt": "2025-10-22T01:34:00.000-03:00"
+    "partySize": 2,
+    "startTime": "2025-10-20T17:00:00.000-03:00",
+    "endTime": "2025-10-20T18:00:00.000-03:00",
+    "durationMinutes": 60,
+    "status": "SEATED",
+    "priority": "STANDARD",
+    "source": "walkin",
+    "createdAt": "2025-10-20T21:19:00.000-03:00",
+    "updatedAt": "2025-10-20T22:19:00.000-03:00"
   },
   {
     "id": "res-26",
-    "tableId": "table-7",
+    "tableId": "table-2",
     "customer": {
-      "name": "Beatriz Guerrero Silva",
-      "phone": "+54-11-8901-2345",
-      "email": "beatrizguerrerosilva@outlook.com"
+      "name": "Francisco Martín Molina",
+      "phone": "+54-11-3333-4444",
+      "email": "franciscomartínmolina@gmail.com"
     },
-    "partySize": 6,
-    "startTime": "2025-10-22T19:30:00.000-03:00",
-    "endTime": "2025-10-22T20:30:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "PENDING",
-    "priority": "STANDARD",
-    "source": "web",
-    "createdAt": "2025-10-22T18:21:00.000-03:00",
-    "updatedAt": "2025-10-22T18:21:00.000-03:00"
+    "partySize": 5,
+    "startTime": "2025-10-24T10:30:00.000-03:00",
+    "endTime": "2025-10-24T12:30:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "CONFIRMED",
+    "priority": "LARGE_GROUP",
+    "source": "phone",
+    "createdAt": "2025-10-24T22:15:00.000-03:00",
+    "updatedAt": "2025-10-24T22:15:00.000-03:00"
   },
   {
     "id": "res-27",
-    "tableId": "table-7",
+    "tableId": "table-2",
     "customer": {
-      "name": "Mónica Flores Ramos",
-      "phone": "+54-11-6767-8989",
-      "email": "mónicafloresramos@gmail.com"
+      "name": "Nicolás Fuentes Campos",
+      "phone": "+54-11-8901-2345",
+      "email": "nicolásfuentescampos@live.com"
     },
-    "partySize": 5,
-    "startTime": "2025-10-23T15:30:00.000-03:00",
-    "endTime": "2025-10-23T17:30:00.000-03:00",
-    "durationMinutes": 120,
-    "status": "CONFIRMED",
+    "partySize": 4,
+    "startTime": "2025-10-24T16:30:00.000-03:00",
+    "endTime": "2025-10-24T19:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "CANCELLED",
     "priority": "VIP",
-    "source": "web",
-    "createdAt": "2025-10-23T21:40:00.000-03:00",
-    "updatedAt": "2025-10-23T21:40:00.000-03:00"
+    "source": "phone",
+    "createdAt": "2025-10-24T19:06:00.000-03:00",
+    "updatedAt": "2025-10-24T19:06:00.000-03:00"
   },
   {
     "id": "res-28",
-    "tableId": "table-5",
+    "tableId": "table-6",
     "customer": {
-      "name": "Sergio Peña López",
-      "phone": "+54-11-5678-9012",
-      "email": "sergiopeñalópez@live.com"
+      "name": "Lucía Morales Reyes",
+      "phone": "+54-11-3333-4444",
+      "email": "lucíamoralesreyes@hotmail.com"
     },
-    "partySize": 5,
-    "startTime": "2025-10-24T21:00:00.000-03:00",
-    "endTime": "2025-10-25T00:00:00.000-03:00",
-    "durationMinutes": 180,
-    "status": "CANCELLED",
-    "priority": "STANDARD",
-    "source": "web",
-    "createdAt": "2025-10-24T14:37:00.000-03:00",
-    "updatedAt": "2025-10-24T14:37:00.000-03:00"
+    "partySize": 1,
+    "startTime": "2025-10-24T20:00:00.000-03:00",
+    "endTime": "2025-10-24T22:00:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "FINISHED",
+    "priority": "LARGE_GROUP",
+    "source": "app",
+    "createdAt": "2025-10-24T22:17:00.000-03:00",
+    "updatedAt": "2025-10-25T00:17:00.000-03:00"
   },
   {
     "id": "res-29",
-    "tableId": "table-5",
+    "tableId": "table-3",
     "customer": {
-      "name": "Claudia Medina López",
-      "phone": "+54-11-7890-1234",
-      "email": "claudiamedinalópez@hotmail.com"
+      "name": "Carmen Pérez Sánchez",
+      "phone": "+54-11-9012-3456",
+      "email": "carmenpérezsánchez@hotmail.com"
     },
     "partySize": 5,
-    "startTime": "2025-10-24T15:00:00.000-03:00",
-    "endTime": "2025-10-24T18:00:00.000-03:00",
+    "startTime": "2025-10-21T20:00:00.000-03:00",
+    "endTime": "2025-10-21T23:00:00.000-03:00",
     "durationMinutes": 180,
-    "status": "PENDING",
-    "priority": "STANDARD",
-    "source": "web",
-    "createdAt": "2025-10-24T14:47:00.000-03:00",
-    "updatedAt": "2025-10-24T14:47:00.000-03:00"
+    "status": "CANCELLED",
+    "priority": "LARGE_GROUP",
+    "source": "walkin",
+    "createdAt": "2025-10-21T15:57:00.000-03:00",
+    "updatedAt": "2025-10-21T15:57:00.000-03:00"
   },
   {
     "id": "res-30",
     "tableId": "table-4",
     "customer": {
-      "name": "Carmen Pérez Molina",
+      "name": "Roberto Herrera Cabrera",
       "phone": "+54-11-4567-8901",
-      "email": "carmenpérezmolina@yahoo.com"
+      "email": "robertoherreracabrera@hotmail.com"
     },
     "partySize": 3,
-    "startTime": "2025-10-20T20:30:00.000-03:00",
-    "endTime": "2025-10-20T21:30:00.000-03:00",
+    "startTime": "2025-10-24T00:00:00.000-03:00",
+    "endTime": "2025-10-24T01:00:00.000-03:00",
     "durationMinutes": 60,
-    "status": "CANCELLED",
+    "status": "NO_SHOW",
     "priority": "LARGE_GROUP",
     "source": "phone",
-    "createdAt": "2025-10-20T16:38:00.000-03:00",
-    "updatedAt": "2025-10-20T16:38:00.000-03:00"
+    "createdAt": "2025-10-23T18:39:00.000-03:00",
+    "updatedAt": "2025-10-23T18:39:00.000-03:00"
   },
   {
     "id": "res-31",
-    "tableId": "table-6",
+    "tableId": "table-8",
     "customer": {
-      "name": "Javier Torres Ortega",
-      "phone": "+54-11-3456-7890",
-      "email": "javiertorresortega@yahoo.com"
+      "name": "Elena Moreno Espinoza",
+      "phone": "+54-11-5656-7878",
+      "email": "elenamorenoespinoza@yahoo.com"
     },
     "partySize": 5,
-    "startTime": "2025-10-24T00:30:00.000-03:00",
-    "endTime": "2025-10-24T01:30:00.000-03:00",
-    "durationMinutes": 60,
-    "status": "CONFIRMED",
+    "startTime": "2025-10-22T20:30:00.000-03:00",
+    "endTime": "2025-10-22T23:30:00.000-03:00",
+    "durationMinutes": 180,
+    "status": "PENDING",
     "priority": "VIP",
     "source": "walkin",
-    "createdAt": "2025-10-23T16:31:00.000-03:00",
-    "updatedAt": "2025-10-23T16:31:00.000-03:00"
+    "createdAt": "2025-10-22T17:33:00.000-03:00",
+    "updatedAt": "2025-10-22T17:33:00.000-03:00"
   },
   {
     "id": "res-32",
-    "tableId": "table-4",
+    "tableId": "table-3",
     "customer": {
-      "name": "Valeria Silva Guerrero",
-      "phone": "+54-11-3456-7890",
-      "email": "valeriasilvaguerrero@yahoo.com"
+      "name": "Javier Torres Medina",
+      "phone": "+54-11-9999-0000",
+      "email": "javiertorresmedina@outlook.com"
     },
-    "partySize": 2,
-    "startTime": "2025-10-24T11:00:00.000-03:00",
-    "endTime": "2025-10-24T12:00:00.000-03:00",
+    "partySize": 1,
+    "startTime": "2025-10-25T01:30:00.000-03:00",
+    "endTime": "2025-10-25T02:30:00.000-03:00",
     "durationMinutes": 60,
     "status": "SEATED",
-    "priority": "STANDARD",
-    "source": "phone",
-    "createdAt": "2025-10-24T14:35:00.000-03:00",
-    "updatedAt": "2025-10-24T18:35:00.000-03:00"
+    "priority": "LARGE_GROUP",
+    "source": "walkin",
+    "createdAt": "2025-10-24T16:31:00.000-03:00",
+    "updatedAt": "2025-10-24T20:31:00.000-03:00"
   },
   {
     "id": "res-33",
     "tableId": "table-5",
     "customer": {
-      "name": "Valeria Silva Cabrera",
+      "name": "David Jiménez Vega",
       "phone": "+54-11-9012-3456",
-      "email": "valeriasilvacabrera@live.com"
+      "email": "davidjiménezvega@hotmail.com"
     },
-    "partySize": 6,
-    "startTime": "2025-10-20T16:30:00.000-03:00",
-    "endTime": "2025-10-20T19:30:00.000-03:00",
+    "partySize": 5,
+    "startTime": "2025-10-24T18:00:00.000-03:00",
+    "endTime": "2025-10-24T21:00:00.000-03:00",
     "durationMinutes": 180,
-    "status": "CANCELLED",
-    "priority": "LARGE_GROUP",
-    "source": "phone",
-    "createdAt": "2025-10-20T14:03:00.000-03:00",
-    "updatedAt": "2025-10-20T14:03:00.000-03:00"
+    "status": "FINISHED",
+    "priority": "STANDARD",
+    "source": "walkin",
+    "createdAt": "2025-10-24T18:00:00.000-03:00",
+    "updatedAt": "2025-10-24T19:00:00.000-03:00"
   },
   {
     "id": "res-34",
-    "tableId": "table-4",
+    "tableId": "table-7",
     "customer": {
-      "name": "Camila Espinoza Aguilar",
-      "phone": "+54-11-0123-4567",
-      "email": "camilaespinozaaguilar@live.com"
+      "name": "Mónica Flores Moreno",
+      "phone": "+54-11-5678-9012",
+      "email": "mónicafloresmoreno@gmail.com"
     },
-    "partySize": 3,
-    "startTime": "2025-10-24T10:30:00.000-03:00",
-    "endTime": "2025-10-24T13:30:00.000-03:00",
-    "durationMinutes": 180,
-    "status": "FINISHED",
-    "priority": "LARGE_GROUP",
+    "partySize": 4,
+    "startTime": "2025-10-19T12:30:00.000-03:00",
+    "endTime": "2025-10-19T14:30:00.000-03:00",
+    "durationMinutes": 120,
+    "status": "CANCELLED",
+    "priority": "VIP",
     "source": "walkin",
-    "createdAt": "2025-10-24T19:35:00.000-03:00",
-    "updatedAt": "2025-10-24T22:35:00.000-03:00"
+    "createdAt": "2025-10-19T17:04:00.000-03:00",
+    "updatedAt": "2025-10-19T17:04:00.000-03:00"
   },
   {
     "id": "res-35",
-    "tableId": "table-7",
+    "tableId": "table-2",
     "customer": {
-      "name": "David Jiménez Silva",
-      "phone": "+54-11-9999-0000",
-      "email": "davidjiménezsilva@hotmail.com"
+      "name": "Beatriz Guerrero Serrano",
+      "phone": "+54-11-3456-7890",
+      "email": "beatrizguerreroserrano@hotmail.com"
     },
     "partySize": 2,
-    "startTime": "2025-10-24T15:00:00.000-03:00",
-    "endTime": "2025-10-24T16:00:00.000-03:00",
+    "startTime": "2025-10-24T21:00:00.000-03:00",
+    "endTime": "2025-10-24T22:00:00.000-03:00",
     "durationMinutes": 60,
-    "status": "NO_SHOW",
-    "priority": "VIP",
-    "source": "walkin",
-    "createdAt": "2025-10-24T16:56:00.000-03:00",
-    "updatedAt": "2025-10-24T16:56:00.000-03:00"
+    "status": "PENDING",
+    "priority": "STANDARD",
+    "source": "app",
+    "createdAt": "2025-10-24T21:24:00.000-03:00",
+    "updatedAt": "2025-10-24T21:24:00.000-03:00"
   }
 ];
 

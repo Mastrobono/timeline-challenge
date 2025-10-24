@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import useTimelineStore from '@/store/useTimelineStore';
 import { seedSectors, seedTables, seedReservations, seedRestaurantConfig } from '@/data/seed-small';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import { canReserveSlot } from '@/lib/conflictService';
+import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 
 export default function TimelinePage() {
   const { 
@@ -18,8 +21,12 @@ export default function TimelinePage() {
     upsertSector,
     upsertTable,
     addReservation,
+    updateReservation,
     setRestaurantConfig
   } = useTimelineStore();
+
+  // DnD sensors
+  const sensors = useSensors(useSensor(PointerSensor));
   
   // Seed data if store is empty
   useEffect(() => {
@@ -49,14 +56,15 @@ export default function TimelinePage() {
     endHour: restaurantConfig?.operatingHours.endHour || 23,
     slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
     slotWidth: ui.slotWidth,
+    viewMode: ui.viewMode,
     timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
   };
   
   // Zoom controls
   const zoomLevels = [
-    { label: '75%', value: 45 },
+    { label: '50%', value: 30 },
     { label: '100%', value: 60 },
-    { label: '125%', value: 75 },
+    { label: '150%', value: 90 },
   ];
   
   const handleZoomChange = (slotWidth: number) => {
@@ -66,9 +74,68 @@ export default function TimelinePage() {
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setVisibleDate(event.target.value);
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over, delta } = event;
+    
+    if (!over || !active) return;
+    
+    // Get the dragged reservation
+    const reservation = active.data.current?.reservation;
+    if (!reservation) return;
+    
+    // Get the target table
+    const targetTableId = String(over.id);
+    if (!targetTableId) return;
+    
+    // Calculate new position based on delta
+    const deltaX = delta.x || 0;
+    const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
+    const newStartSlot = Math.max(0, originalStartSlot + pxToSlot(deltaX, config));
+    
+    // Calculate new end slot (maintain duration)
+    const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
+    const duration = originalEndSlot - originalStartSlot;
+    const newEndSlot = newStartSlot + duration;
+    
+    // Check if the new position is valid (no conflicts)
+    const allReservations = Object.values(reservationsById);
+    const canMove = canReserveSlot(
+      allReservations,
+      targetTableId,
+      newStartSlot,
+      newEndSlot,
+      config,
+      reservation.id // Ignore the reservation being moved
+    );
+    
+    if (!canMove) {
+      console.log('Cannot move reservation: conflict detected');
+      return;
+    }
+    
+    // Calculate new start and end times
+    const newStartTime = slotToIso(newStartSlot, config);
+    const newEndTime = slotToIso(newEndSlot, config);
+    
+    // Update the reservation
+    updateReservation(reservation.id, {
+      tableId: targetTableId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+    });
+    
+    console.log('Reservation moved successfully:', {
+      reservationId: reservation.id,
+      newTableId: targetTableId,
+      newStartTime,
+      newEndTime,
+    });
+  };
   
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="h-screen flex flex-col bg-gray-100">
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 h-14">
         <div className="flex items-center justify-between">
@@ -116,7 +183,8 @@ export default function TimelinePage() {
       <div className="flex-1 overflow-hidden">
         <TimelineLayout config={config} />
       </div>
-    </div>
+      </div>
+    </DndContext>
   );
 }
 
