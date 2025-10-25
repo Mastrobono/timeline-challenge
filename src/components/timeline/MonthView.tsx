@@ -1,7 +1,7 @@
 import React from 'react';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay, addDays } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
 import useTimelineStore from '@/store/useTimelineStore';
-import { getReservationIsoDate } from '@/lib/timeUtils';
+import { ReservationFilterService } from '@/lib/reservationFilterService';
 
 export default function MonthView() {
   const { ui, setVisibleDate, setViewMode, reservationsById, restaurantConfig } = useTimelineStore();
@@ -20,9 +20,6 @@ export default function MonthView() {
   // Create a grid of 7 columns (days of week)
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
-  // Calculate how many weeks we need to display
-  const totalDays = firstDayOfWeek + daysInMonth.length;
-  const weeksNeeded = Math.ceil(totalDays / 7);
   
   // Create calendar grid
   const calendarDays = [];
@@ -35,13 +32,16 @@ export default function MonthView() {
   }
   
   // Add days of the month
-  daysInMonth.forEach((day, index) => {
+  daysInMonth.forEach((day) => {
     const isToday = isSameDay(day, new Date());
     const dayString = format(day, 'yyyy-MM-dd');
     
-    // Calculate deterministic reservation count from store data
-    const reservationCount = Object.values(reservationsById).filter(reservation => {
-      const reservationDate = getReservationIsoDate(reservation, visibleDate, {
+    // Calculate deterministic reservation count using centralized filter service
+    const allReservations = Object.values(reservationsById);
+    const filteredReservations = ReservationFilterService.filterReservationsForMonthView(
+      allReservations,
+      dayString,
+      {
         date: visibleDate,
         startHour: restaurantConfig?.operatingHours.startHour || startHour,
         endHour: restaurantConfig?.operatingHours.endHour || 23,
@@ -49,24 +49,11 @@ export default function MonthView() {
         slotWidth: 30,
         timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
         viewMode: 'month',
-      });
-      
-      // Check if reservation is on the correct date
-      if (reservationDate !== dayString) {
-        return false;
-      }
-      
-      // Filter out reservations outside restaurant hours
-      if (reservation.startTime) {
-        const startTime = new Date(reservation.startTime);
-        const reservationHour = startTime.getHours();
-        const restaurantStartHour = restaurantConfig?.operatingHours.startHour || startHour;
-        const restaurantEndHour = restaurantConfig?.operatingHours.endHour || 23;
-        return reservationHour >= restaurantStartHour && reservationHour < restaurantEndHour;
-      }
-      
-      return true;
-    }).length;
+      },
+      restaurantConfig
+    );
+    
+    const reservationCount = filteredReservations.length;
     
     const handleDayClick = () => {
       setVisibleDate(dayString);

@@ -1,9 +1,8 @@
 import React, { forwardRef } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
-import type { Table, Reservation, Sector } from '@/types';
-import type { TimelineConfig } from '@/types';
-import { getSlotsPerDay, getReservationIsoDate, getCurrentTimePosition } from '@/lib/timeUtils';
-import { ROW_HEIGHT, HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/lib/constants';
+import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
+import { getSlotsPerDay, getCurrentTimePosition } from '@/lib/timeUtils';
+import { ROW_HEIGHT } from '@/lib/constants';
 import useTimelineStore, { getValidReservationsForSector } from '@/store/useTimelineStore';
 import Toolbar from './Toolbar';
 import TimeHeader from './TimeHeader';
@@ -32,15 +31,17 @@ const getContrastColor = (hexColor: string, opacity: number = 0.05): string => {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 };
 
+
 interface TimelineLayoutProps {
   config?: TimelineConfig;
   tables?: Table[];
   reservations?: Reservation[];
   sectors?: Sector[];
+  dragState?: DragState;
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors }, ref) => {
+  ({ config, tables, reservations, sectors, dragState }, ref) => {
     // Use store data if props are not provided
     const store = useTimelineStore();
     const { ui, toggleSectorCollapse } = store;
@@ -114,7 +115,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         totalSlots = slotsPerDay * 7;
         break;
       case 'month':
-        daysInView = 1; // Month view handled separately
         totalSlots = slotsPerDay;
         break;
     }
@@ -138,8 +138,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     // Sort sectors
     const sortedSectors = finalSectors.sort((a, b) => a.sortOrder - b.sortOrder);
     
-    // Get all tables
-    const allTables = finalTables.sort((a, b) => a.sortOrder - b.sortOrder);
     
     // Get reservations for each table
     const getReservationsForTable = (tableId: string) => {
@@ -196,7 +194,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                       className="flex items-center px-3 py-2 hover:opacity-80 cursor-pointer relative"
                       style={{ 
                         height: '30px',
-                        backgroundColor: `${sector.color}0D` // 0D = 5% opacity in hex (más claro)
+                        backgroundColor: `${sector.color}0D`
                       }}
                       onClick={() => toggleSectorCollapse(sector.id)}
                     >
@@ -304,7 +302,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                         className="flex items-center px-3 py-2"
                         style={{ 
                           height: '30px',
-                          backgroundColor: `${sector.color}0D` // 0D = 5% opacity in hex (más claro)
+                          backgroundColor: `${sector.color}0D`
                         }}
                       >
                         {(() => {
@@ -328,7 +326,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           table={table}
                           reservations={getReservationsForTable(table.id)}
                           config={finalConfig}
-                          sectorName={sector.name}
+                          dragState={dragState}
                         />
                       ))}
                     </div>

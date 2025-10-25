@@ -1,6 +1,6 @@
-import { addMinutes, differenceInMinutes, addDays, format } from 'date-fns';
+import { addMinutes, differenceInMinutes, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { TimelineConfig } from '@/types';
+import { TimelineConfig, Reservation } from '@/types';
 
 /**
  * Convert a slot index to minutes from midnight in the configured timezone
@@ -86,7 +86,7 @@ export function computeXForSlotAndDay(slotInDay: number, dayIndex: number, confi
  * Get the ISO date string for a reservation based on its properties
  * Extracts date from startTime (ISO format) or falls back to baseDate
  */
-export function getReservationIsoDate(reservation: any, baseDate: string, config: TimelineConfig): string {
+export function getReservationIsoDate(reservation: Reservation, baseDate: string): string {
   // Extract date from startTime (ISO format)
   if (reservation.startTime) {
     return reservation.startTime.split('T')[0]; // Get YYYY-MM-DD part

@@ -79,39 +79,43 @@ function generateRandomDate(startDate, endDate) {
   return new Date(randomTime);
 }
 
-// Función para generar un horario de reservación realista
+// Generate realistic reservation time
 function generateReservationTime(date) {
-  // Horarios del restaurante: 7:00 AM - 11:00 PM (7-23)
-  const hour = Math.floor(Math.random() * 16) + 7; // Entre 7:00 y 22:00
-  const minute = Math.random() < 0.5 ? 0 : 30; // 0 o 30 minutos
+  // Restaurant hours: 7:00 AM - 10:45 PM (7-22.75)
+  // Generate start time between 7:00 and 20:00 (to allow max 2:45 hours duration)
+  const hour = Math.floor(Math.random() * 13) + 7; // Between 7:00 and 19:00
+  const minute = Math.random() < 0.5 ? 0 : 30; // 0 or 30 minutes
   
   const startTime = new Date(date);
   startTime.setHours(hour, minute, 0, 0);
   
-  // Duración entre 1-3 horas, pero asegurar que no pase de las 23:00
-  const maxDuration = Math.min(3, 23 - hour);
-  const duration = Math.floor(Math.random() * maxDuration) + 1; // 1, 2 o 3 horas
-  const endTime = new Date(startTime);
-  endTime.setHours(startTime.getHours() + duration);
+  // Duration between 1-2.5 hours max, calculating to end before 22:45
+  const maxHoursUntilClose = 22.75 - hour; // 22:45 = 22.75 hours
+  const maxDuration = Math.min(2.5, maxHoursUntilClose - 0.25); // -0.25 for margin
+  const duration = Math.random() * maxDuration + 1; // Between 1 and maxDuration hours
   
-  // Asegurar que no pase de las 23:00
-  if (endTime.getHours() > 23) {
-    endTime.setHours(23, 0, 0, 0);
+  const endTime = new Date(startTime);
+  endTime.setHours(startTime.getHours() + Math.floor(duration));
+  endTime.setMinutes(startTime.getMinutes() + Math.round((duration % 1) * 60));
+  
+  // Final validation: if for any reason it ends after 22:45, adjust
+  if (endTime.getHours() > 22 || (endTime.getHours() === 22 && endTime.getMinutes() > 45)) {
+    endTime.setHours(22, 45, 0, 0);
   }
   
   return {
     startTime: startTime.toISOString().replace('Z', '-03:00'),
     endTime: endTime.toISOString().replace('Z', '-03:00'),
-    durationMinutes: duration * 60
+    durationMinutes: Math.round(duration * 60)
   };
 }
 
-// Función para generar una reservación
+// Generate a reservation
 function generateReservation(id, tableId, date) {
   const name = generateRandomName();
   const email = generateRandomEmail(name);
   const phone = generateRandomPhone();
-  const partySize = Math.floor(Math.random() * 6) + 1; // 1-6 personas
+  const partySize = Math.floor(Math.random() * 6) + 1; // 1-6 people
   const status = statuses[Math.floor(Math.random() * statuses.length)];
   const priority = priorities[Math.floor(Math.random() * priorities.length)];
   const source = sources[Math.floor(Math.random() * sources.length)];
@@ -300,7 +304,7 @@ export const seedRestaurantConfig: RestaurantConfig = {
   "timezone": "America/Argentina/Buenos_Aires",
   "operatingHours": {
     "startHour": 7,
-    "endHour": 23
+    "endHour": 22
   },
   "slotConfiguration": {
     "slotMinutes": 15,

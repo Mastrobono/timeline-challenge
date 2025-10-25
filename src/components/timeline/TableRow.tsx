@@ -1,18 +1,18 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import type { Table, Reservation } from '@/types';
-import type { TimelineConfig } from '@/types';
+import type { Table, Reservation, TimelineConfig, DragState } from '@/types';
 import { ROW_HEIGHT } from '@/lib/constants';
 import ReservationBlock from './ReservationBlock';
+
 
 interface TableRowProps {
   table: Table;
   reservations: Reservation[];
   config: TimelineConfig;
-  sectorName: string;
+  dragState?: DragState;
 }
 
-export default function TableRow({ table, reservations, config, sectorName }: TableRowProps) {
+export default function TableRow({ table, reservations, config, dragState }: TableRowProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: table.id,
   });
@@ -38,6 +38,7 @@ export default function TableRow({ table, reservations, config, sectorName }: Ta
             key={reservation.id}
             reservation={reservation}
             config={config}
+            dragState={dragState}
           />
         ))}
       </div>

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# seed files
+src/data/seed-small.ts
+src/data/seed-large.ts

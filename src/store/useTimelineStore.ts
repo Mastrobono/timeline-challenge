@@ -1,7 +1,9 @@
 import { create } from 'zustand';
-import { addDays, addWeeks, addMonths, startOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
+import { persist } from 'zustand/middleware';
+import { addDays, addWeeks, addMonths } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { getTodayInTimezone, getReservationIsoDate } from '@/lib/timeUtils';
+import { getTodayInTimezone } from '@/lib/timeUtils';
+import { ReservationFilterService } from '@/lib/reservationFilterService';
 import type { Table, Sector, Reservation, UUID, RestaurantConfig } from '@/types';
 
 export interface TimelineState {
@@ -18,6 +20,7 @@ export interface TimelineState {
     viewMode: 'day' | '3-day' | 'week' | 'month';
     startHour: number;
   };
+  _hasHydrated: boolean;
 }
 
 export interface TimelineActions {
@@ -36,6 +39,7 @@ export interface TimelineActions {
   goToNextPeriod: () => void;
   goToPrevPeriod: () => void;
   goToToday: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export type TimelineStore = TimelineState & TimelineActions;
@@ -48,335 +52,36 @@ export type TimelineStore = TimelineState & TimelineActions;
  * // reservationIds comes from state.reservationsByTable[tableId]
  * // Example: ["res-001", "res-003", "res-005"] (sorted by startSlot: 10, 20, 30)
  * // New reservation with startSlot: 15 should be inserted at index 1
- * const insertIndex = findInsertIndex(tableReservations, newReservation, reservationsById);
+ * // Result: ["res-001", "res-015", "res-003", "res-005"]
  */
-export function findInsertIndex(
-  reservationIds: UUID[],
-  reservation: Reservation,
+function findInsertIndex(
+  reservationIds: UUID[], 
+  newReservation: Reservation, 
   reservationsById: Record<UUID, Reservation>
 ): number {
-  const { startTime } = reservation;
+  const newStartSlot = newReservation.startTime ? 
+    new Date(newReservation.startTime).getHours() * 4 + 
+    Math.floor(new Date(newReservation.startTime).getMinutes() / 15) : 0;
   
   for (let i = 0; i < reservationIds.length; i++) {
     const existingReservation = reservationsById[reservationIds[i]];
-    if (existingReservation && existingReservation.startTime > startTime) {
-      return i;
+    if (existingReservation && existingReservation.startTime) {
+      const existingStartSlot = new Date(existingReservation.startTime).getHours() * 4 + 
+        Math.floor(new Date(existingReservation.startTime).getMinutes() / 15);
+      
+      if (newStartSlot < existingStartSlot) {
+        return i;
+      }
     }
   }
   
   return reservationIds.length;
 }
 
-const useTimelineStore = create<TimelineStore>((set) => ({
-  // Initial state
-  reservationsById: {},
-  reservationsByTable: {},
-  tablesById: {},
-  sectorsById: {},
-  restaurantConfig: null,
-  ui: {
-    slotWidth: 60, // Increased back to 60 for better visibility
-    zoom: 1,
-    collapsedSectors: {},
-    visibleDate: '2025-10-21', // October 21, 2025
-    viewMode: 'day',
-    startHour: 7, // Restaurant opens at 7am
-  },
-
-  // Actions
-  addReservation: (reservation: Reservation) => {
-    set((state) => {
-      const { id, tableId } = reservation;
-      
-      // Add to reservationsById
-      const newReservationsById = {
-        ...state.reservationsById,
-        [id]: reservation,
-      };
-      
-      // Add to reservationsByTable with proper sorting
-      const tableReservations = state.reservationsByTable[tableId] || [];
-      const insertIndex = findInsertIndex(tableReservations, reservation, newReservationsById);
-      
-      const newTableReservations = [...tableReservations];
-      newTableReservations.splice(insertIndex, 0, id);
-      
-      return {
-        ...state,
-        reservationsById: newReservationsById,
-        reservationsByTable: {
-          ...state.reservationsByTable,
-          [tableId]: newTableReservations,
-        },
-      };
-    });
-  },
-
-  updateReservation: (resId: UUID, patch: Partial<Reservation>) => {
-    set((state) => {
-      const existingReservation = state.reservationsById[resId];
-      if (!existingReservation) return state;
-
-      const updatedReservation = { ...existingReservation, ...patch };
-      const { tableId: oldTableId, startTime: oldStartTime } = existingReservation;
-      const { tableId: newTableId, startTime: newStartTime } = updatedReservation;
-
-      // Update reservationsById
-      const newReservationsById = {
-        ...state.reservationsById,
-        [resId]: updatedReservation,
-      };
-
-      let newReservationsByTable = { ...state.reservationsByTable };
-
-      // If tableId or startTime changed, we need to move the reservation
-      if (oldTableId !== newTableId || oldStartTime !== newStartTime) {
-        // Remove from old table
-        newReservationsByTable = {
-          ...newReservationsByTable,
-          [oldTableId]: (newReservationsByTable[oldTableId] || []).filter(id => id !== resId),
-        };
-
-        // Add to new table with proper sorting
-        const targetTableReservations = newReservationsByTable[newTableId] || [];
-        const insertIndex = findInsertIndex(targetTableReservations, updatedReservation, newReservationsById);
-        
-        const newTargetTableReservations = [...targetTableReservations];
-        newTargetTableReservations.splice(insertIndex, 0, resId);
-
-        newReservationsByTable = {
-          ...newReservationsByTable,
-          [newTableId]: newTargetTableReservations,
-        };
-      }
-
-      return {
-        ...state,
-        reservationsById: newReservationsById,
-        reservationsByTable: newReservationsByTable,
-      };
-    });
-  },
-
-  deleteReservation: (resId: UUID) => {
-    set((state) => {
-      const reservation = state.reservationsById[resId];
-      if (!reservation) return state;
-
-      const { tableId } = reservation;
-
-      // Remove from reservationsById
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { [resId]: _, ...newReservationsById } = state.reservationsById;
-
-      // Remove from reservationsByTable
-      const newReservationsByTable = {
-        ...state.reservationsByTable,
-        [tableId]: (state.reservationsByTable[tableId] || []).filter(id => id !== resId),
-      };
-
-      return {
-        ...state,
-        reservationsById: newReservationsById,
-        reservationsByTable: newReservationsByTable,
-      };
-    });
-  },
-
-  insertReservationToTableIndex: (tableId: UUID, resId: UUID) => {
-    set((state) => {
-      const reservation = state.reservationsById[resId];
-      if (!reservation) return state;
-
-      const tableReservations = state.reservationsByTable[tableId] || [];
-      const insertIndex = findInsertIndex(tableReservations, reservation, state.reservationsById);
-      
-      const newTableReservations = [...tableReservations];
-      newTableReservations.splice(insertIndex, 0, resId);
-
-      return {
-        ...state,
-        reservationsByTable: {
-          ...state.reservationsByTable,
-          [tableId]: newTableReservations,
-        },
-      };
-    });
-  },
-
-  removeReservationFromTable: (tableId: UUID, resId: UUID) => {
-    set((state) => {
-      const tableReservations = state.reservationsByTable[tableId] || [];
-      const filteredReservations = tableReservations.filter(id => id !== resId);
-
-      return {
-        ...state,
-        reservationsByTable: {
-          ...state.reservationsByTable,
-          [tableId]: filteredReservations,
-        },
-      };
-    });
-  },
-
-  upsertTable: (table: Table) => {
-    set((state) => ({
-      ...state,
-      tablesById: {
-        ...state.tablesById,
-        [table.id]: table,
-      },
-    }));
-  },
-
-  upsertSector: (sector: Sector) => {
-    set((state) => ({
-      ...state,
-      sectorsById: {
-        ...state.sectorsById,
-        [sector.id]: sector,
-      },
-    }));
-  },
-
-  setSlotWidth: (px: number) => {
-    set((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        slotWidth: px,
-      },
-    }));
-  },
-
-  setVisibleDate: (date: string) => {
-    set((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        visibleDate: date,
-      },
-    }));
-  },
-
-  toggleSectorCollapse: (sectorId: UUID) => {
-    set((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        collapsedSectors: {
-          ...state.ui.collapsedSectors,
-          [sectorId]: !state.ui.collapsedSectors[sectorId],
-        },
-      },
-    }));
-  },
-
-  setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => {
-    set((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        viewMode: mode,
-      },
-    }));
-  },
-
-  goToNextPeriod: () => {
-    set((state) => {
-      const { visibleDate, viewMode } = state.ui;
-      const currentDate = new Date(visibleDate);
-      const timezone = 'America/Argentina/Buenos_Aires';
-      
-      let newDate: Date;
-      
-      switch (viewMode) {
-        case 'day':
-          newDate = addDays(currentDate, 1);
-          break;
-        case '3-day':
-          newDate = addDays(currentDate, 3);
-          break;
-        case 'week':
-          newDate = addWeeks(currentDate, 1);
-          break;
-        case 'month':
-          newDate = addMonths(currentDate, 1);
-          break;
-        default:
-          newDate = currentDate;
-      }
-      
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          visibleDate: newDate.toISOString().split('T')[0],
-        },
-      };
-    });
-  },
-
-  goToPrevPeriod: () => {
-    set((state) => {
-      const { visibleDate, viewMode } = state.ui;
-      const currentDate = new Date(visibleDate);
-      const timezone = 'America/Argentina/Buenos_Aires';
-      
-      let newDate: Date;
-      
-      switch (viewMode) {
-        case 'day':
-          newDate = addDays(currentDate, -1);
-          break;
-        case '3-day':
-          newDate = addDays(currentDate, -3);
-          break;
-        case 'week':
-          newDate = addWeeks(currentDate, -1);
-          break;
-        case 'month':
-          newDate = addMonths(currentDate, -1);
-          break;
-        default:
-          newDate = currentDate;
-      }
-      
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          visibleDate: newDate.toISOString().split('T')[0],
-        },
-      };
-    });
-  },
-
-  goToToday: () => {
-    set((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        visibleDate: getTodayInTimezone('America/Argentina/Buenos_Aires'),
-      },
-    }));
-  },
-
-  setRestaurantConfig: (config: RestaurantConfig) => {
-    set((state) => ({
-      ...state,
-      restaurantConfig: config,
-      ui: {
-        ...state.ui,
-        startHour: config.operatingHours.startHour,
-        slotWidth: config.slotConfiguration.defaultSlotWidth,
-      },
-    }));
-  },
-
-}));
-
-// Helper function to get valid reservations for a sector
+/**
+ * Helper function to get the number of valid reservations for a sector
+ * Uses the centralized ReservationFilterService for consistent filtering logic
+ */
 export const getValidReservationsForSector = (
   sectorId: UUID, 
   date: string, 
@@ -384,43 +89,401 @@ export const getValidReservationsForSector = (
 ): number => {
   const { reservationsById, tablesById, restaurantConfig, ui } = state;
   
-  // Count valid reservations for this sector on the given date
-  const validReservations = Object.values(reservationsById).filter((reservation) => {
-    // Type guard to ensure reservation is of type Reservation
-    if (!reservation || typeof reservation !== 'object' || !('tableId' in reservation)) return false;
-    
-    const res = reservation as Reservation;
-    
-    // Check if reservation is for a table in this sector
-    const table = tablesById[res.tableId];
-    if (!table || table.sectorId !== sectorId) return false;
-    
-    // Check if reservation is for the correct date
-    const reservationDate = getReservationIsoDate(res, date, {
-      date: date,
-      startHour: restaurantConfig?.operatingHours.startHour || ui.startHour,
-      endHour: restaurantConfig?.operatingHours.endHour || 23,
-      slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
-      slotWidth: 30,
-      timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
-      viewMode: 'day',
-    });
-    
-    if (reservationDate !== date) return false;
-    
-    // Filter out reservations outside restaurant hours
-    if (res.startTime) {
-      const startTime = new Date(res.startTime);
-      const reservationHour = startTime.getHours();
-      const restaurantStartHour = restaurantConfig?.operatingHours.startHour || ui.startHour;
-      const restaurantEndHour = restaurantConfig?.operatingHours.endHour || 23;
-      return reservationHour >= restaurantStartHour && reservationHour < restaurantEndHour;
-    }
-    
-    return true;
-  });
+  // Get all tables in this sector
+  const sectorTables = Object.values(tablesById).filter(table => table.sectorId === sectorId);
+  const sectorTableIds = sectorTables.map(table => table.id);
   
-  return validReservations.length;
+  // Get all reservations
+  const allReservations = Object.values(reservationsById);
+  
+  // Use the centralized filter service
+  return ReservationFilterService.countValidReservationsForSector(
+    allReservations,
+    sectorTableIds,
+    date,
+    {
+      date,
+      startHour: ui.startHour,
+      endHour: 23,
+      slotMinutes: 15,
+      slotWidth: 60,
+      timezone: 'America/Argentina/Buenos_Aires',
+      viewMode: 'day'
+    },
+    restaurantConfig
+  );
 };
+
+const useTimelineStore = create<TimelineStore>()(
+  persist(
+    (set) => {
+      return {
+      // Initial state
+      reservationsById: {},
+      reservationsByTable: {},
+      tablesById: {},
+      sectorsById: {},
+      restaurantConfig: null,
+      ui: {
+        slotWidth: 60,
+        zoom: 1,
+        collapsedSectors: {},
+        visibleDate: '2025-10-24',
+        viewMode: 'day',
+        startHour: 7,
+      },
+      _hasHydrated: false,
+
+      // Hydration state
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
+      },
+
+      // Actions
+      addReservation: (reservation: Reservation) => {
+        set((state) => {
+          // Validate reservation times before adding
+          if (reservation.endTime) {
+            const endTime = new Date(reservation.endTime);
+            const timezone = state.restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+            const zonedEndTime = toZonedTime(endTime, timezone);
+            const endHour = zonedEndTime.getHours();
+            const endMinutes = zonedEndTime.getMinutes();
+            const restaurantEndHour = state.restaurantConfig?.operatingHours.endHour || 22;
+            
+            // Check if reservation ends after restaurant closes
+            if (endHour > restaurantEndHour || (endHour === restaurantEndHour && endMinutes > 45)) {
+              return state; // Don't add the reservation
+            }
+          }
+          
+          const { id, tableId } = reservation;
+          
+          // Add to reservationsById
+          const newReservationsById = {
+            ...state.reservationsById,
+            [id]: reservation,
+          };
+          
+          // Add to reservationsByTable with proper sorting
+          const tableReservations = state.reservationsByTable[tableId] || [];
+          const insertIndex = findInsertIndex(tableReservations, reservation, newReservationsById);
+          
+          const newTableReservations = [...tableReservations];
+          newTableReservations.splice(insertIndex, 0, id);
+          
+          return {
+            ...state,
+            reservationsById: newReservationsById,
+            reservationsByTable: {
+              ...state.reservationsByTable,
+              [tableId]: newTableReservations,
+            },
+          };
+        });
+      },
+
+      updateReservation: (resId: UUID, patch: Partial<Reservation>) => {
+        set((state) => {
+          const existingReservation = state.reservationsById[resId];
+          if (!existingReservation) return state;
+
+          const updatedReservation = { ...existingReservation, ...patch };
+          
+          // Validate reservation times before updating
+          if (updatedReservation.endTime) {
+            const endTime = new Date(updatedReservation.endTime);
+            const timezone = state.restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+            const zonedEndTime = toZonedTime(endTime, timezone);
+            const endHour = zonedEndTime.getHours();
+            const endMinutes = zonedEndTime.getMinutes();
+            const restaurantEndHour = state.restaurantConfig?.operatingHours.endHour || 22;
+            
+            // Check if reservation ends after restaurant closes
+            if (endHour > restaurantEndHour || (endHour === restaurantEndHour && endMinutes > 45)) {
+              return state; // Don't update the reservation
+            }
+          }
+          
+          
+          const { tableId: oldTableId, startTime: oldStartTime } = existingReservation;
+          const { tableId: newTableId, startTime: newStartTime } = updatedReservation;
+
+          // Update reservationsById
+          const newReservationsById = {
+            ...state.reservationsById,
+            [resId]: updatedReservation,
+          };
+
+          // If table changed, move reservation between tables
+          if (oldTableId !== newTableId) {
+            // Remove from old table
+            const oldTableReservations = state.reservationsByTable[oldTableId] || [];
+            const newOldTableReservations = oldTableReservations.filter(id => id !== resId);
+            
+            // Add to new table with proper sorting
+            const newTableReservations = state.reservationsByTable[newTableId] || [];
+            const insertIndex = findInsertIndex(newTableReservations, updatedReservation, newReservationsById);
+            const updatedNewTableReservations = [...newTableReservations];
+            updatedNewTableReservations.splice(insertIndex, 0, resId);
+
+            return {
+              ...state,
+              reservationsById: newReservationsById,
+              reservationsByTable: {
+                ...state.reservationsByTable,
+                [oldTableId]: newOldTableReservations,
+                [newTableId]: updatedNewTableReservations,
+              },
+            };
+          }
+
+          // If start time changed, re-sort within the same table
+          if (oldStartTime !== newStartTime) {
+            const tableReservations = state.reservationsByTable[newTableId] || [];
+            const filteredReservations = tableReservations.filter(id => id !== resId);
+            const insertIndex = findInsertIndex(filteredReservations, updatedReservation, newReservationsById);
+            const newTableReservations = [...filteredReservations];
+            newTableReservations.splice(insertIndex, 0, resId);
+
+            return {
+              ...state,
+              reservationsById: newReservationsById,
+              reservationsByTable: {
+                ...state.reservationsByTable,
+                [newTableId]: newTableReservations,
+              },
+            };
+          }
+
+          // No structural changes needed
+          return {
+            ...state,
+            reservationsById: newReservationsById,
+          };
+        });
+      },
+
+      deleteReservation: (resId: UUID) => {
+        set((state) => {
+          const reservation = state.reservationsById[resId];
+          if (!reservation) return state;
+
+          const { tableId } = reservation;
+          const tableReservations = state.reservationsByTable[tableId] || [];
+          const newTableReservations = tableReservations.filter(id => id !== resId);
+
+          const newReservationsById = { ...state.reservationsById };
+          delete newReservationsById[resId];
+
+          return {
+            ...state,
+            reservationsById: newReservationsById,
+            reservationsByTable: {
+              ...state.reservationsByTable,
+              [tableId]: newTableReservations,
+            },
+          };
+        });
+      },
+
+      insertReservationToTableIndex: (tableId: UUID, resId: UUID) => {
+        set((state) => {
+          const tableReservations = state.reservationsByTable[tableId] || [];
+          const newTableReservations = [...tableReservations, resId];
+
+          return {
+            ...state,
+            reservationsByTable: {
+              ...state.reservationsByTable,
+              [tableId]: newTableReservations,
+            },
+          };
+        });
+      },
+
+      removeReservationFromTable: (tableId: UUID, resId: UUID) => {
+        set((state) => {
+          const tableReservations = state.reservationsByTable[tableId] || [];
+          const newTableReservations = tableReservations.filter(id => id !== resId);
+
+          return {
+            ...state,
+            reservationsByTable: {
+              ...state.reservationsByTable,
+              [tableId]: newTableReservations,
+            },
+          };
+        });
+      },
+
+      upsertTable: (table: Table) => {
+        set((state) => ({
+          ...state,
+          tablesById: {
+            ...state.tablesById,
+            [table.id]: table,
+          },
+        }));
+      },
+
+      upsertSector: (sector: Sector) => {
+        set((state) => ({
+          ...state,
+          sectorsById: {
+            ...state.sectorsById,
+            [sector.id]: sector,
+          },
+        }));
+      },
+
+      setSlotWidth: (px: number) => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            slotWidth: px,
+            zoom: px / 60, // Calculate zoom based on slot width
+          },
+        }));
+      },
+
+      setVisibleDate: (date: string) => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            visibleDate: date,
+          },
+        }));
+      },
+
+      toggleSectorCollapse: (sectorId: UUID) => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            collapsedSectors: {
+              ...state.ui.collapsedSectors,
+              [sectorId]: !state.ui.collapsedSectors[sectorId],
+            },
+          },
+        }));
+      },
+
+      setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            viewMode: mode,
+          },
+        }));
+      },
+
+      goToNextPeriod: () => {
+        set((state) => {
+          const { viewMode, visibleDate } = state.ui;
+          let newDate: Date;
+
+          switch (viewMode) {
+            case 'day':
+              newDate = addDays(new Date(visibleDate), 1);
+              break;
+            case '3-day':
+              newDate = addDays(new Date(visibleDate), 3);
+              break;
+            case 'week':
+              newDate = addWeeks(new Date(visibleDate), 1);
+              break;
+            case 'month':
+              newDate = addMonths(new Date(visibleDate), 1);
+              break;
+            default:
+              newDate = new Date(visibleDate);
+          }
+
+          return {
+            ...state,
+            ui: {
+              ...state.ui,
+              visibleDate: newDate.toISOString().split('T')[0],
+            },
+          };
+        });
+      },
+
+      goToPrevPeriod: () => {
+        set((state) => {
+          const { viewMode, visibleDate } = state.ui;
+          let newDate: Date;
+
+          switch (viewMode) {
+            case 'day':
+              newDate = addDays(new Date(visibleDate), -1);
+              break;
+            case '3-day':
+              newDate = addDays(new Date(visibleDate), -3);
+              break;
+            case 'week':
+              newDate = addWeeks(new Date(visibleDate), -1);
+              break;
+            case 'month':
+              newDate = addMonths(new Date(visibleDate), -1);
+              break;
+            default:
+              newDate = new Date(visibleDate);
+          }
+
+          return {
+            ...state,
+            ui: {
+              ...state.ui,
+              visibleDate: newDate.toISOString().split('T')[0],
+            },
+          };
+        });
+      },
+
+      goToToday: () => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            visibleDate: getTodayInTimezone('America/Argentina/Buenos_Aires'),
+          },
+        }));
+      },
+
+      setRestaurantConfig: (config: RestaurantConfig) => {
+        set((state) => ({
+          ...state,
+          restaurantConfig: config,
+          ui: {
+            ...state.ui,
+            startHour: config.operatingHours.startHour,
+            slotWidth: config.slotConfiguration.defaultSlotWidth,
+          },
+        }));
+      },
+      };
+    },
+    {
+      name: 'timeline-store',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.setHasHydrated(true);
+        }
+      },
+      partialize: (state) => ({
+        reservationsById: state.reservationsById,
+        tablesById: state.tablesById,
+        sectorsById: state.sectorsById,
+        restaurantConfig: state.restaurantConfig,
+        ui: state.ui,
+      }),
+    }
+  )
+);
 
 export default useTimelineStore;

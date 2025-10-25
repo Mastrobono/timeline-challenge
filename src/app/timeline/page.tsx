@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { useEffect, useState, useCallback } from 'react';
+import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import useTimelineStore from '@/store/useTimelineStore';
 import { seedSectors, seedTables, seedReservations, seedRestaurantConfig } from '@/data/seed-small';
@@ -12,10 +12,10 @@ import type { TimelineConfig } from '@/types';
 export default function TimelinePage() {
   const { 
     sectorsById, 
-    tablesById, 
     reservationsById, 
     restaurantConfig,
     ui, 
+    _hasHydrated,
     setSlotWidth, 
     setVisibleDate,
     upsertSector,
@@ -25,13 +25,33 @@ export default function TimelinePage() {
     setRestaurantConfig
   } = useTimelineStore();
 
+  // State for real-time drag preview
+  const [dragState, setDragState] = useState<{
+    activeId: string | null;
+    delta: { x: number; y: number };
+    dragType: 'move' | 'resize-left' | 'resize-right' | null;
+  }>({
+    activeId: null,
+    delta: { x: 0, y: 0 },
+    dragType: null,
+  });
+
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
   
-  // Seed data if store is empty
+  // Seed data if store is empty (only after hydration is complete)
   useEffect(() => {
+    // Wait for hydration to complete
+    if (!_hasHydrated) {
+      return;
+    }
+
     const hasData = Object.keys(sectorsById).length > 0;
-    if (!hasData) {
+    const hasRestaurantConfig = restaurantConfig !== null;
+    
+    
+    if (!hasData || !hasRestaurantConfig) {
+      
       // Add restaurant configuration
       setRestaurantConfig(seedRestaurantConfig);
       
@@ -46,8 +66,9 @@ export default function TimelinePage() {
       
       // Set visible date to match the reservations (October 2025)
       setVisibleDate('2025-10-24');
+    } else {
     }
-  }, [sectorsById, tablesById, reservationsById, upsertSector, upsertTable, addReservation, setVisibleDate, setRestaurantConfig]);
+  }, [_hasHydrated, sectorsById, restaurantConfig, upsertSector, upsertTable, addReservation, setVisibleDate, setRestaurantConfig]);
   
   // Create timeline config
   const config: TimelineConfig = {
@@ -75,8 +96,58 @@ export default function TimelinePage() {
     setVisibleDate(event.target.value);
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const activeId = String(event.active.id);
+    let dragType: 'move' | 'resize-left' | 'resize-right' | null = null;
+    
+    if (activeId.startsWith('resize-left-')) {
+      dragType = 'resize-left';
+    } else if (activeId.startsWith('resize-right-')) {
+      dragType = 'resize-right';
+    } else {
+      dragType = 'move';
+    }
+    
+    setDragState({
+      activeId,
+      delta: { x: 0, y: 0 },
+      dragType,
+    });
+  };
+
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const { active, delta } = event;
+    const activeId = String(active.id);
+    
+    // Only update when we cross slot boundaries (every 60px = 1 slot)
+    setDragState(prev => {
+      if (prev.activeId === activeId) {
+        const prevSlot = Math.floor(prev.delta.x / 60); // 60px per slot
+        const currentSlot = Math.floor(delta.x / 60);
+        
+        // Only update if we've moved to a different slot
+        if (prevSlot === currentSlot) {
+          return prev;
+        }
+      }
+      
+      return {
+        activeId,
+        delta: { x: delta.x, y: delta.y },
+        dragType: prev.dragType,
+      };
+    });
+  }, []);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over, delta } = event;
+    
+    // Clear drag state
+    setDragState({
+      activeId: null,
+      delta: { x: 0, y: 0 },
+      dragType: null,
+    });
     
     if (!over || !active) return;
     
@@ -84,57 +155,137 @@ export default function TimelinePage() {
     const reservation = active.data.current?.reservation;
     if (!reservation) return;
     
-    // Get the target table
-    const targetTableId = String(over.id);
-    if (!targetTableId) return;
-    
-    // Calculate new position based on delta
+    const activeId = String(active.id);
     const deltaX = delta.x || 0;
-    const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
-    const newStartSlot = Math.max(0, originalStartSlot + pxToSlot(deltaX, config));
     
-    // Calculate new end slot (maintain duration)
-    const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
-    const duration = originalEndSlot - originalStartSlot;
-    const newEndSlot = newStartSlot + duration;
-    
-    // Check if the new position is valid (no conflicts)
-    const allReservations = Object.values(reservationsById);
-    const canMove = canReserveSlot(
-      allReservations,
-      targetTableId,
-      newStartSlot,
-      newEndSlot,
-      config,
-      reservation.id // Ignore the reservation being moved
-    );
-    
-    if (!canMove) {
-      console.log('Cannot move reservation: conflict detected');
-      return;
+    // Handle resize operations
+    if (activeId.startsWith('resize-left-')) {
+      // RESIZE LEFT LOGIC - change start time, keep end time
+      const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
+      const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
+      
+      // Calculate new start slot based on delta
+      const newStartSlot = Math.max(0, originalStartSlot + pxToSlot(deltaX, config));
+      
+      // Ensure new start is before end and duration is valid (at least 1 slot)
+      if (newStartSlot >= originalEndSlot) {
+        return;
+      }
+      
+      // Check for conflicts
+      const allReservations = Object.values(reservationsById);
+      const canResize = canReserveSlot(
+        allReservations,
+        reservation.tableId,
+        newStartSlot,
+        originalEndSlot,
+        config,
+        reservation.id
+      );
+      
+      if (!canResize) {
+        return;
+      }
+      
+      // Calculate new start time
+      const newStartTime = slotToIso(newStartSlot, config);
+      
+      // Update the reservation
+      updateReservation(reservation.id, {
+        startTime: newStartTime,
+        endTime: reservation.endTime, // Keep original end time
+      });
+      
+      
+    } else if (activeId.startsWith('resize-right-')) {
+      // RESIZE RIGHT LOGIC - change end time, keep start time
+      const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
+      const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
+      
+      // Calculate new end slot based on delta
+      const newEndSlot = Math.max(originalStartSlot + 1, originalEndSlot + pxToSlot(deltaX, config));
+      
+      // Ensure new end is after start
+      if (newEndSlot <= originalStartSlot) {
+        return;
+      }
+      
+      // Check for conflicts
+      const allReservations = Object.values(reservationsById);
+      const canResize = canReserveSlot(
+        allReservations,
+        reservation.tableId,
+        originalStartSlot,
+        newEndSlot,
+        config,
+        reservation.id
+      );
+      
+      if (!canResize) {
+        return;
+      }
+      
+      // Calculate new end time
+      const newEndTime = slotToIso(newEndSlot, config);
+      
+      // Update the reservation
+      updateReservation(reservation.id, {
+        startTime: reservation.startTime, // Keep original start time
+        endTime: newEndTime,
+      });
+      
+      
+    } else {
+      // MOVE LOGIC (existing functionality)
+      // Get the target table
+      const targetTableId = String(over.id);
+      if (!targetTableId) return;
+      
+      // Calculate new position based on delta
+      const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
+      const newStartSlot = Math.max(0, originalStartSlot + pxToSlot(deltaX, config));
+      
+      // Calculate new end slot (maintain duration)
+      const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
+      const duration = originalEndSlot - originalStartSlot;
+      const newEndSlot = newStartSlot + duration;
+      
+      // Check if the new position is valid (no conflicts)
+      const allReservations = Object.values(reservationsById);
+      const canMove = canReserveSlot(
+        allReservations,
+        targetTableId,
+        newStartSlot,
+        newEndSlot,
+        config,
+        reservation.id // Ignore the reservation being moved
+      );
+      
+      if (!canMove) {
+        return;
+      }
+      
+      // Calculate new start and end times
+      const newStartTime = slotToIso(newStartSlot, config);
+      const newEndTime = slotToIso(newEndSlot, config);
+      
+      // Update the reservation
+      updateReservation(reservation.id, {
+        tableId: targetTableId,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      });
+      
     }
-    
-    // Calculate new start and end times
-    const newStartTime = slotToIso(newStartSlot, config);
-    const newEndTime = slotToIso(newEndSlot, config);
-    
-    // Update the reservation
-    updateReservation(reservation.id, {
-      tableId: targetTableId,
-      startTime: newStartTime,
-      endTime: newEndTime,
-    });
-    
-    console.log('Reservation moved successfully:', {
-      reservationId: reservation.id,
-      newTableId: targetTableId,
-      newStartTime,
-      newEndTime,
-    });
   };
   
-  return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    return (
+    <DndContext 
+      sensors={sensors} 
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
+    >
       <div className="h-screen flex flex-col bg-gray-100">
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 h-14">
@@ -181,7 +332,10 @@ export default function TimelinePage() {
       
       {/* Timeline */}
       <div className="flex-1 overflow-hidden">
-        <TimelineLayout config={config} />
+        <TimelineLayout 
+          config={config} 
+          dragState={dragState}
+        />
       </div>
       </div>
     </DndContext>

@@ -81,3 +81,9 @@ export interface RestaurantConfig {
 }
 
 export type OccupiedSlotsMap = Record<Table['id'], Set<number>>;
+
+export interface DragState {
+  activeId: string | null;
+  delta: { x: number; y: number };
+  dragType: 'move' | 'resize-left' | 'resize-right' | null;
+}
