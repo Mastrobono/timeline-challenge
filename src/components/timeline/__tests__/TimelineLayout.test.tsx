@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { create } from 'zustand';
 import TimelineLayout from '../TimelineLayout';
-import type { TimelineConfig } from '@/lib/timeUtils';
+import type { TimelineConfig } from '@/types';
 import type { Table, Sector, Reservation } from '@/types';
 
 // Test data mocks
@@ -103,7 +103,7 @@ vi.mock('@/store/useTimelineStore', () => ({
 
 // Mock date-fns-tz
 vi.mock('date-fns-tz', () => ({
-  toZonedTime: vi.fn((date: Date, timezone: string) => date),
+  toZonedTime: vi.fn((date: Date) => date),
 }));
 
 // Mock the time utilities
@@ -115,17 +115,17 @@ vi.mock('@/lib/timeUtils', () => ({
     const slotsPerDay = (config.endHour - config.startHour) * (60 / config.slotMinutes);
     return ((dayIndex * slotsPerDay) + slotInDay) * config.slotWidth;
   },
-  getReservationIsoDate: (reservation: any, baseDate: string, config: TimelineConfig) => {
+  getReservationIsoDate: (reservation: Reservation, baseDate: string) => {
     if (reservation.startTime) {
       return reservation.startTime.split('T')[0];
     }
     return baseDate;
   },
-  getCurrentTimePosition: (config: TimelineConfig) => {
+  getCurrentTimePosition: () => {
     // Mock to return null for tests (no current time indicator)
     return null;
   },
-  formatDateForDisplay: (dateString: string, timezone: string) => {
+  formatDateForDisplay: (dateString: string) => {
     const date = new Date(dateString + 'T00:00:00Z');
     return date.toLocaleDateString('en-US', { 
       weekday: 'short', 
@@ -134,7 +134,7 @@ vi.mock('@/lib/timeUtils', () => ({
       year: 'numeric' 
     });
   },
-  getTodayInTimezone: (timezone: string) => '2025-10-23',
+  getTodayInTimezone: () => '2025-10-23',
   slotToIso: (slotIndex: number, config: TimelineConfig) => {
     const baseDate = new Date(config.date + 'T00:00:00');
     const minutesFromMidnight = slotIndex * config.slotMinutes;
@@ -151,6 +151,7 @@ describe('TimelineLayout', () => {
     slotMinutes: 15,
     slotWidth: 60,
     timezone: 'America/Argentina/Buenos_Aires',
+    viewMode: 'day',
   };
 
   beforeEach(() => {

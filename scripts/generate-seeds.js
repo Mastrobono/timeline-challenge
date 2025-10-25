@@ -1,6 +1,57 @@
 const fs = require('fs');
 const path = require('path');
 
+// Simple validation functions for Node.js
+function validateReservation(reservation, restaurantConfig, existingReservations = []) {
+  const errors = [];
+  
+  // Validate operating hours
+  const startTime = new Date(reservation.startTime);
+  const endTime = new Date(reservation.endTime);
+  
+  // Check if reservation starts before restaurant opens
+  if (startTime.getHours() < restaurantConfig.operatingHours.startHour) {
+    errors.push(`Reservation starts at ${startTime.getHours()}:${startTime.getMinutes().toString().padStart(2, '0')}, but restaurant opens at ${restaurantConfig.operatingHours.startHour}:00`);
+  }
+  
+  // Check if reservation ends after restaurant closes
+  const endHour = restaurantConfig.operatingHours.endHour;
+  const endMinute = 0; // Restaurant closes at XX:00 (uses config)
+  if (endTime.getHours() > endHour || (endTime.getHours() === endHour && endTime.getMinutes() > endMinute)) {
+    errors.push(`Reservation ends at ${endTime.getHours()}:${endTime.getMinutes().toString().padStart(2, '0')}, but restaurant closes at ${endHour}:${endMinute.toString().padStart(2, '0')}`);
+  }
+  
+  // Check if reservation is at least 1 hour long
+  const durationHours = (endTime - startTime) / (1000 * 60 * 60);
+  if (durationHours < 1) {
+    errors.push(`Reservation duration is too short: ${durationHours.toFixed(2)} hours`);
+  }
+  
+  // Check if reservation is not longer than 4 hours
+  if (durationHours > 4) {
+    errors.push(`Reservation duration is too long: ${durationHours.toFixed(2)} hours`);
+  }
+  
+  // Check for conflicts with existing reservations
+  for (const existing of existingReservations) {
+    if (existing.tableId === reservation.tableId) {
+      const existingStart = new Date(existing.startTime);
+      const existingEnd = new Date(existing.endTime);
+      
+      // Check if reservations overlap
+      if (startTime < existingEnd && endTime > existingStart) {
+        errors.push(`Reservation conflicts with existing reservation ${existing.id} on table ${reservation.tableId}`);
+        break; // Only report one conflict per reservation
+      }
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
 // Datos realistas para generar seeds
 const customerNames = [
   'Ana García', 'Carlos López', 'María Rodríguez', 'José Martínez', 'Laura Sánchez',
@@ -82,16 +133,16 @@ function generateRandomDate(startDate, endDate) {
 // Generate realistic reservation time
 function generateReservationTime(date) {
   // Restaurant hours: 7:00 AM - 10:45 PM (7-22.75)
-  // Generate start time between 7:00 and 20:00 (to allow max 2:45 hours duration)
-  const hour = Math.floor(Math.random() * 13) + 7; // Between 7:00 and 19:00
+  // Generate start time between 7:00 and 19:00 (to allow max 3:45 hours duration)
+  const hour = Math.floor(Math.random() * 12) + 7; // Between 7:00 and 18:00
   const minute = Math.random() < 0.5 ? 0 : 30; // 0 or 30 minutes
   
   const startTime = new Date(date);
   startTime.setHours(hour, minute, 0, 0);
   
-  // Duration between 1-2.5 hours max, calculating to end before 22:45
+  // Duration between 1-3 hours max, calculating to end before 22:45
   const maxHoursUntilClose = 22.75 - hour; // 22:45 = 22.75 hours
-  const maxDuration = Math.min(2.5, maxHoursUntilClose - 0.25); // -0.25 for margin
+  const maxDuration = Math.min(3, maxHoursUntilClose - 0.25); // -0.25 for margin
   const duration = Math.random() * maxDuration + 1; // Between 1 and maxDuration hours
   
   const endTime = new Date(startTime);
@@ -110,28 +161,54 @@ function generateReservationTime(date) {
   };
 }
 
-// Generate a reservation
-function generateReservation(id, tableId, date) {
+// Check if a reservation conflicts with existing reservations
+function hasConflict(newReservation, existingReservations) {
+  if (!newReservation || !newReservation.startTime || !newReservation.endTime) {
+    return true; // Consider invalid reservations as conflicts
+  }
+  
+  const newStart = new Date(newReservation.startTime);
+  const newEnd = new Date(newReservation.endTime);
+  
+  return existingReservations.some(existing => {
+    const existingStart = new Date(existing.startTime);
+    const existingEnd = new Date(existing.endTime);
+    
+    // Check if reservations overlap
+    return (newStart < existingEnd && newEnd > existingStart);
+  });
+}
+
+// Generate a reservation with simplified validation
+function generateReservation(id, tableId, date, existingReservations = [], tables) {
   const name = generateRandomName();
   const email = generateRandomEmail(name);
   const phone = generateRandomPhone();
-  const partySize = Math.floor(Math.random() * 6) + 1; // 1-6 people
   const status = statuses[Math.floor(Math.random() * statuses.length)];
   const priority = priorities[Math.floor(Math.random() * priorities.length)];
   const source = sources[Math.floor(Math.random() * sources.length)];
   
-  const { startTime, endTime, durationMinutes } = generateReservationTime(date);
-  
-  const createdAt = new Date(date);
-  createdAt.setHours(Math.floor(Math.random() * 12) + 8); // Entre 8:00 y 19:00
-  createdAt.setMinutes(Math.floor(Math.random() * 60));
-  
-  const updatedAt = new Date(createdAt);
-  if (status === 'SEATED' || status === 'FINISHED') {
-    updatedAt.setHours(updatedAt.getHours() + Math.floor(Math.random() * 4) + 1);
+  // Find the table to get its capacity
+  const table = tables.find(t => t.id === tableId);
+  if (!table) {
+    return null; // Table doesn't exist
   }
   
-  return {
+  // Generate party size within table capacity
+  const minCapacity = table.capacity.min;
+  const maxCapacity = table.capacity.max;
+  const partySize = Math.floor(Math.random() * (maxCapacity - minCapacity + 1)) + minCapacity;
+  
+  // Generate time with simple approach
+  const { startTime, endTime, durationMinutes } = generateReservationTime(date);
+  
+  // Check if reservation ends before restaurant closes (22:00)
+  const endTimeDate = new Date(endTime);
+  if (endTimeDate.getHours() > 22 || (endTimeDate.getHours() === 22 && endTimeDate.getMinutes() > 0)) {
+    return null; // Invalid time
+  }
+  
+  const reservation = {
     id: `res-${id}`,
     tableId,
     customer: {
@@ -146,12 +223,101 @@ function generateReservation(id, tableId, date) {
     status,
     priority,
     source,
-    createdAt: createdAt.toISOString().replace('Z', '-03:00'),
-    updatedAt: updatedAt.toISOString().replace('Z', '-03:00')
+    createdAt: new Date(date).toISOString().replace('Z', '-03:00'),
+    updatedAt: new Date(date).toISOString().replace('Z', '-03:00')
   };
+  
+  // Check for conflicts
+  if (hasConflict(reservation, existingReservations)) {
+    return null; // Has conflict
+  }
+  
+  return reservation;
 }
 
-// Función para generar sectores
+// Generate a reservation with shorter duration to avoid conflicts
+function generateShortReservation(id, tableId, date, existingReservations = [], tables) {
+  const name = generateRandomName();
+  const email = generateRandomEmail(name);
+  const phone = generateRandomPhone();
+  const status = statuses[Math.floor(Math.random() * statuses.length)];
+  const priority = priorities[Math.floor(Math.random() * priorities.length)];
+  const source = sources[Math.floor(Math.random() * sources.length)];
+  
+  // Find the table to get its capacity
+  const table = tables.find(t => t.id === tableId);
+  if (!table) {
+    return null; // Table doesn't exist
+  }
+  
+  // Generate party size within table capacity
+  const minCapacity = table.capacity.min;
+  const maxCapacity = table.capacity.max;
+  const partySize = Math.floor(Math.random() * (maxCapacity - minCapacity + 1)) + minCapacity;
+  
+  // Try to generate a valid reservation with shorter duration (max 20 attempts)
+  let reservation;
+  let attempts = 0;
+  const maxAttempts = 20;
+  
+  do {
+    // Generate shorter duration (1-1.5 hours)
+    const hour = Math.floor(Math.random() * 13) + 7; // Between 7:00 and 19:00
+    const minute = Math.random() < 0.5 ? 0 : 30; // 0 or 30 minutes
+    
+    const startTime = new Date(date);
+    startTime.setHours(hour, minute, 0, 0);
+    
+    // Shorter duration: 1-1.5 hours
+    const duration = Math.random() * 0.5 + 1; // Between 1 and 1.5 hours
+    
+    const endTime = new Date(startTime);
+    endTime.setHours(startTime.getHours() + Math.floor(duration));
+    endTime.setMinutes(startTime.getMinutes() + Math.round((duration % 1) * 60));
+    
+    // Check if reservation ends before restaurant closes (22:45)
+    if (endTime.getHours() > 22 || (endTime.getHours() === 22 && endTime.getMinutes() > 45)) {
+      attempts++;
+      continue; // Try again with different time
+    }
+    
+    // Additional validation: ensure start time is within restaurant hours (7:00-22:45)
+    if (startTime.getHours() < 7 || startTime.getHours() > 22 || (startTime.getHours() === 22 && startTime.getMinutes() > 45)) {
+      attempts++;
+      continue; // Try again with different time
+    }
+    
+    reservation = {
+      id: `res-${id}`,
+      tableId,
+      customer: {
+        name,
+        phone,
+        email
+      },
+      partySize,
+      startTime: startTime.toISOString().replace('Z', '-03:00'),
+      endTime: endTime.toISOString().replace('Z', '-03:00'),
+      durationMinutes: durationSlots * 15,
+      status,
+      priority,
+      source,
+      createdAt: new Date(date).toISOString().replace('Z', '-03:00'),
+      updatedAt: new Date(date).toISOString().replace('Z', '-03:00')
+    };
+    
+    attempts++;
+  } while (hasConflict(reservation, existingReservations) && attempts < maxAttempts);
+  
+  // If we couldn't find a valid reservation, return null
+  if (attempts >= maxAttempts) {
+    return null;
+  }
+  
+  return reservation;
+}
+
+// Function to generate sectors
 function generateSectors() {
   return sectorNames.map((name, index) => ({
     id: `sector-${index + 1}`,
@@ -161,7 +327,7 @@ function generateSectors() {
   }));
 }
 
-// Función para generar mesas
+// Function to generate tables
 function generateTables(sectorCount, tableCount) {
   const tables = [];
   let tableId = 1;
@@ -189,101 +355,248 @@ function generateTables(sectorCount, tableCount) {
   return tables;
 }
 
-// Función para generar reservaciones para un rango de fechas
-function generateReservationsForDateRange(startDate, endDate, tableCount, reservationCount) {
-  const reservations = [];
+// Unified function to generate reservations for a date range - WITH VALIDATION
+function generateReservationsForDateRange(startDate, endDate, tableCount, reservationCount, tables, restaurantConfig = null) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   
-  // Crear un array de días con pesos para distribución más realista
-  const dayWeights = [];
-  for (let i = 0; i < daysDiff; i++) {
-    const dayOfWeek = (start.getDay() + i) % 7;
-    // Viernes y sábados tienen más peso (más reservaciones)
-    // Lunes y martes tienen menos peso
-    let weight = 1;
-    if (dayOfWeek === 5 || dayOfWeek === 6) weight = 3; // Viernes y sábado
-    else if (dayOfWeek === 0) weight = 2; // Domingo
-    else if (dayOfWeek === 1 || dayOfWeek === 2) weight = 0.5; // Lunes y martes
-    else weight = 1.5; // Miércoles y jueves
+  // Use provided restaurant config or defaults
+  const config = restaurantConfig || {
+    operatingHours: {
+      startHour: 7,
+      endHour: 22
+    },
+    timezone: 'America/Argentina/Buenos_Aires'
+  };
+  
+  const validReservations = [];
+  let attempts = 0;
+  const maxAttempts = reservationCount * 200; // Allow many more attempts
+  
+  console.log(`🎯 Target: Generate exactly ${reservationCount} VALID reservations`);
+  
+  // Keep generating until we have exactly the number requested
+  while (validReservations.length < reservationCount) {
+    attempts++;
     
-    dayWeights.push(weight);
-  }
-  
-  // Normalizar pesos
-  const totalWeight = dayWeights.reduce((sum, weight) => sum + weight, 0);
-  const normalizedWeights = dayWeights.map(weight => weight / totalWeight);
-  
-  // Generar reservaciones distribuidas
-  for (let i = 0; i < reservationCount; i++) {
-    // Seleccionar día basado en pesos
-    let randomValue = Math.random();
-    let selectedDay = 0;
-    for (let j = 0; j < normalizedWeights.length; j++) {
-      randomValue -= normalizedWeights[j];
-      if (randomValue <= 0) {
-        selectedDay = j;
-        break;
-      }
+    if (attempts > maxAttempts) {
+      console.log(`⚠️  Reached max attempts (${maxAttempts}), generated ${validReservations.length} out of ${reservationCount} requested`);
+      break;
     }
     
+    // Select random day
+    const randomDay = Math.floor(Math.random() * daysDiff);
     const date = new Date(start);
-    date.setDate(start.getDate() + selectedDay);
+    date.setDate(start.getDate() + randomDay);
     
+    // Select random table
     const tableId = `table-${Math.floor(Math.random() * tableCount) + 1}`;
-    const reservation = generateReservation(i + 1, tableId, date);
-    reservations.push(reservation);
+    
+    // Generate reservation
+    const name = generateRandomName();
+    const email = generateRandomEmail(name);
+    const phone = generateRandomPhone();
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const priority = priorities[Math.floor(Math.random() * priorities.length)];
+    const source = sources[Math.floor(Math.random() * sources.length)];
+    
+    // Find the table to get its capacity
+    const table = tables.find(t => t.id === tableId);
+    if (!table) continue;
+    
+    // Generate party size within table capacity
+    const minCapacity = table.capacity.min;
+    const maxCapacity = table.capacity.max;
+    const partySize = Math.floor(Math.random() * (maxCapacity - minCapacity + 1)) + minCapacity;
+    
+    // Generate time with strict slot-based approach (15-minute slots)
+    const startHour = config.operatingHours.startHour;
+    const endHour = config.operatingHours.endHour;
+    const endMinute = 0; // Restaurant closes at XX:00 (uses config)
+    
+    // Calculate available slots (15-minute intervals)
+    const totalMinutes = (endHour - startHour) * 60; // Total minutes in operating hours
+    const availableSlots = Math.floor(totalMinutes / 15); // Number of 15-minute slots
+    
+    // Generate start slot (leave room for at least 4 slots = 1 hour)
+    const maxStartSlot = availableSlots - 4; // At least 4 slots (1 hour) before closing
+    const startSlot = Math.floor(Math.random() * maxStartSlot);
+    
+    // Convert slot to actual time
+    const startMinutes = startSlot * 15;
+    const startHourActual = startHour + Math.floor(startMinutes / 60);
+    const startMinuteActual = startMinutes % 60;
+    
+    const startTime = new Date(date);
+    startTime.setHours(startHourActual, startMinuteActual, 0, 0);
+    
+    // Generate duration in slots (4-16 slots = 1-4 hours)
+    const maxDurationSlots = Math.min(16, availableSlots - startSlot); // Max 4 hours or until closing
+    const minDurationSlots = 4; // Minimum 1 hour
+    const durationSlots = Math.floor(Math.random() * (maxDurationSlots - minDurationSlots + 1)) + minDurationSlots;
+    
+    // Calculate end time in slots
+    const endSlot = startSlot + durationSlots;
+    const endMinutes = endSlot * 15;
+    const endHourActual = startHour + Math.floor(endMinutes / 60);
+    const endMinuteActual = endMinutes % 60;
+    
+    const endTime = new Date(date);
+    endTime.setHours(endHourActual, endMinuteActual, 0, 0);
+    
+    // STRICT VALIDATION: Check if reservation ends before or at restaurant closing
+    if (endHourActual > endHour || (endHourActual === endHour && endMinuteActual > endMinute)) {
+      continue; // Skip this attempt, try again
+    }
+    
+    // Additional validation: ensure we don't exceed the restaurant's closing time
+    const closingTime = new Date(date);
+    closingTime.setHours(endHour, endMinute, 0, 0);
+    if (endTime.getTime() > closingTime.getTime()) {
+      continue; // Skip this attempt, try again
+    }
+    
+    const reservation = {
+      id: `res-${Date.now()}-${attempts}`,
+      tableId,
+      customer: {
+        name,
+        phone,
+        email
+      },
+      partySize,
+      startTime: startTime.toISOString().replace('Z', '-03:00'),
+      endTime: endTime.toISOString().replace('Z', '-03:00'),
+      durationMinutes: durationSlots * 15,
+      status,
+      priority,
+      source,
+      createdAt: new Date(date).toISOString().replace('Z', '-03:00'),
+      updatedAt: new Date(date).toISOString().replace('Z', '-03:00')
+    };
+    
+    // Validate the reservation (including conflicts with existing ones)
+    const validation = validateReservation(reservation, config, validReservations);
+    if (validation.isValid) {
+      validReservations.push(reservation);
+      console.log(`✅ Generated valid reservation ${validReservations.length}/${reservationCount}: ${reservation.customer.name} at ${reservation.startTime}`);
+    } else {
+      // Don't log every invalid reservation to avoid spam, only every 10th
+      if (attempts % 10 === 0) {
+        console.log(`❌ Invalid reservation rejected (attempt ${attempts}): ${validation.errors.join(', ')}`);
+      }
+    }
   }
   
-  return reservations;
+  console.log(`Generated ${validReservations.length} valid reservations out of ${reservationCount} requested (${attempts} attempts)`);
+  
+  return validReservations;
 }
 
-// Función principal para generar seed-small
-function generateSeedSmall() {
-  const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Lunes de esta semana
+// Function to generate CSV from reservations
+function generateCSVReservations(reservations, timezone = 'America/Argentina/Buenos_Aires') {
+  const headers = [
+    'id',
+    'tableId', 
+    'customerName',
+    'customerPhone',
+    'customerEmail',
+    'partySize',
+    'startTime',
+    'endTime',
+    'durationMinutes',
+    'status',
+    'priority',
+    'source',
+    'createdAt',
+    'updatedAt'
+  ];
+  
+  const csvRows = reservations.map(reservation => [
+    reservation.id,
+    reservation.tableId,
+    reservation.customer.name,
+    reservation.customer.phone,
+    reservation.customer.email,
+    reservation.partySize,
+    reservation.startTime,
+    reservation.endTime,
+    reservation.durationMinutes,
+    reservation.status,
+    reservation.priority,
+    reservation.source,
+    reservation.createdAt,
+    reservation.updatedAt
+  ]);
+  
+  const csvContent = [headers, ...csvRows]
+    .map(row => row.map(field => `"${field}"`).join(','))
+    .join('\n');
+    
+  return csvContent;
+}
+
+// Unified function to generate seed data with restaurant config
+function generateSeedData(reservationCount, tableCount, sectorCount, restaurantConfig = null) {
+  console.log(`Generating seed data with ${reservationCount} reservations`);
+  
+  // Use restaurant config if provided, otherwise use defaults
+  const config = restaurantConfig || {
+    operatingHours: {
+      startHour: 7,
+      endHour: 22
+    },
+    timezone: 'America/Argentina/Buenos_Aires'
+  };
+  
+  console.log(`Using restaurant config: ${config.operatingHours.startHour}:00 - ${config.operatingHours.endHour}:00 (${config.timezone})`);
+  
+  // Use current week for realistic data
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+  startOfWeek.setHours(0, 0, 0, 0);
   
   const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6); // Domingo de esta semana
+  endOfWeek.setDate(startOfWeek.getDate() + 6); // End of week (Saturday)
+  endOfWeek.setHours(23, 59, 59, 999);
   
-  const sectors = generateSectors().slice(0, 3); // 3 sectores
-  const tables = generateTables(3, 8); // 8 mesas distribuidas en 3 sectores
+  console.log(`Date range: ${startOfWeek.toISOString().split('T')[0]} to ${endOfWeek.toISOString().split('T')[0]}`);
+  console.log(`Restaurant hours: ${config.operatingHours.startHour}:00 - ${config.operatingHours.endHour}:00`);
+  console.log(`Timezone: ${config.timezone}`);
+  console.log(`Current date: ${new Date().toISOString()}`);
+  console.log(`Current timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+  console.log(`Slot system: 15-minute intervals, ${Math.floor((config.operatingHours.endHour - config.operatingHours.startHour) * 60 / 15)} total slots`);
+  console.log(`Config source: ${restaurantConfig ? 'Provided restaurant config' : 'Default config'}`);
+  
+  const sectors = generateSectors().slice(0, sectorCount);
+  const tables = generateTables(sectorCount, tableCount);
   const reservations = generateReservationsForDateRange(
     startOfWeek.toISOString().split('T')[0],
     endOfWeek.toISOString().split('T')[0],
-    8,
-    35 // 35 reservaciones para la semana (5 por día en promedio)
+    tableCount,
+    reservationCount,
+    tables,
+    config
   );
   
   return {
     sectors,
     tables,
-    reservations
+    reservations,
+    csvContent: generateCSVReservations(reservations, config.timezone)
   };
 }
 
-// Función principal para generar seed-large
-function generateSeedLarge() {
-  const today = new Date();
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  
-  const sectors = generateSectors(); // Todos los sectores
-  const tables = generateTables(sectors.length, 30); // 30 mesas
-  const reservations = generateReservationsForDateRange(
-    startOfMonth.toISOString().split('T')[0],
-    endOfMonth.toISOString().split('T')[0],
-    30,
-    300 // 300 reservaciones para el mes (10 por día en promedio)
-  );
-  
-  return {
-    sectors,
-    tables,
-    reservations
-  };
+// Main function to generate seed-small
+function generateSeedSmall(restaurantConfig = null) {
+  return generateSeedData(50, 8, 3, restaurantConfig);
+}
+
+// Main function to generate seed-large
+function generateSeedLarge(restaurantConfig = null) {
+  return generateSeedData(200, 30, 9, restaurantConfig);
 }
 
 // Función para escribir el archivo de seed
@@ -330,5 +643,7 @@ writeSeedFile(seedSmallData, 'seed-small.ts');
 // Generar seed-large
 const seedLargeData = generateSeedLarge();
 writeSeedFile(seedLargeData, 'seed-large.ts');
+
+// CSV generation is only done when Generate CSV button is clicked
 
 console.log('✨ Seed generation completed!');

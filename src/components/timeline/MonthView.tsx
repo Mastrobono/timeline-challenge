@@ -82,11 +82,15 @@ export default function MonthView() {
     );
   });
   
+  // Calculate total reservations for the month
+  const allReservations = Object.values(reservationsById);
+  const totalReservations = allReservations.length;
+  
   return (
     <div className="p-4">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
-          {format(currentDate, 'MMMM yyyy')}
+          {format(currentDate, 'MMMM yyyy')} - {totalReservations} reservations
         </h3>
       </div>
       

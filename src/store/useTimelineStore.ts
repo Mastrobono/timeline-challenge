@@ -4,6 +4,7 @@ import { addDays, addWeeks, addMonths } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getTodayInTimezone } from '@/lib/timeUtils';
 import { ReservationFilterService } from '@/lib/reservationFilterService';
+import { ReservationValidationService } from '@/lib/reservationValidationService';
 import type { Table, Sector, Reservation, UUID, RestaurantConfig } from '@/types';
 
 export interface TimelineState {
@@ -40,6 +41,14 @@ export interface TimelineActions {
   goToPrevPeriod: () => void;
   goToToday: () => void;
   setHasHydrated: (state: boolean) => void;
+  initializeWithValidation: (data: {
+    reservations: Reservation[];
+    tables: Table[];
+    sectors: Sector[];
+    restaurantConfig: RestaurantConfig;
+  }) => void;
+  bulkImportReservations: (reservations: Reservation[]) => void;
+  clearAllReservations: () => void;
 }
 
 export type TimelineStore = TimelineState & TimelineActions;
@@ -116,8 +125,7 @@ export const getValidReservationsForSector = (
 
 const useTimelineStore = create<TimelineStore>()(
   persist(
-    (set) => {
-      return {
+    (set) => ({
       // Initial state
       reservationsById: {},
       reservationsByTable: {},
@@ -466,8 +474,119 @@ const useTimelineStore = create<TimelineStore>()(
           },
         }));
       },
-      };
-    },
+
+      // Initialize store with validation
+      initializeWithValidation: (data: {
+        reservations: Reservation[];
+        tables: Table[];
+        sectors: Sector[];
+        restaurantConfig: RestaurantConfig;
+      }) => {
+        set((state) => {
+          const { reservations, tables, sectors, restaurantConfig } = data;
+          
+          // Validate all reservations before adding them
+          const validation = ReservationValidationService.validateReservations(
+            reservations,
+            {
+              restaurantConfig,
+              tables,
+              existingReservations: []
+            }
+          );
+          
+          ReservationValidationService.logValidationResults();
+          
+          // Build tables and sectors maps
+          const tablesById = tables.reduce((acc, table) => {
+            acc[table.id] = table;
+            return acc;
+          }, {} as Record<UUID, Table>);
+          
+          const sectorsById = sectors.reduce((acc, sector) => {
+            acc[sector.id] = sector;
+            return acc;
+          }, {} as Record<UUID, Sector>);
+          
+          // Build reservations maps with only valid reservations
+          const reservationsById = validation.validReservations.reduce((acc, reservation) => {
+            acc[reservation.id] = reservation;
+            return acc;
+          }, {} as Record<UUID, Reservation>);
+          
+          const reservationsByTable = validation.validReservations.reduce((acc, reservation) => {
+            if (!acc[reservation.tableId]) {
+              acc[reservation.tableId] = [];
+            }
+            acc[reservation.tableId].push(reservation.id);
+            return acc;
+          }, {} as Record<UUID, UUID[]>);
+          
+          return {
+            ...state,
+            reservationsById,
+            reservationsByTable,
+            tablesById,
+            sectorsById,
+            restaurantConfig,
+            ui: {
+              ...state.ui,
+              startHour: restaurantConfig.operatingHours.startHour,
+              slotWidth: restaurantConfig.slotConfiguration.defaultSlotWidth,
+            },
+          };
+        });
+      },
+
+      // Bulk import with validation
+      bulkImportReservations: (reservations: Reservation[]) => {
+        set((state) => {
+          const tables = Object.values(state.tablesById);
+          const existingReservations = Object.values(state.reservationsById);
+          
+          // Validate new reservations
+          const validation = ReservationValidationService.validateReservations(
+            reservations,
+            {
+              restaurantConfig: state.restaurantConfig,
+              tables,
+              existingReservations
+            }
+          );
+          
+          // Log validation results
+          ReservationValidationService.logValidationResults();
+          
+          // Add only valid reservations
+          const newReservationsById = { ...state.reservationsById };
+          const newReservationsByTable = { ...state.reservationsByTable };
+          
+          validation.validReservations.forEach(reservation => {
+            newReservationsById[reservation.id] = reservation;
+            
+            if (!newReservationsByTable[reservation.tableId]) {
+              newReservationsByTable[reservation.tableId] = [];
+            }
+            newReservationsByTable[reservation.tableId].push(reservation.id);
+          });
+          
+          return {
+            ...state,
+            reservationsById: newReservationsById,
+            reservationsByTable: newReservationsByTable,
+          };
+        });
+      },
+
+      // Clear all reservations
+      clearAllReservations: () => {
+        set((state) => ({
+          ...state,
+          reservationsById: {},
+          reservationsByTable: {},
+        }));
+      },
+    }),
     {
       name: 'timeline-store',
       onRehydrateStorage: () => (state) => {

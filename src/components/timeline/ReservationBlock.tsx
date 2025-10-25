@@ -66,16 +66,6 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
   const endHour = endDate.getHours();
   const endMinute = endDate.getMinutes();
   
-  // Don't render if reservation is outside visible hours
-  if (startHour < config.startHour || startHour >= config.endHour) {
-    return null;
-  }
-  
-  // Don't render if end hour is outside visible hours
-  if (endHour < config.startHour || endHour > config.endHour) {
-    return null;
-  }
-  
   const startSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
   const endSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
   
@@ -83,7 +73,7 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
   const left = startSlot * config.slotWidth;
   const width = (endSlot - startSlot) * config.slotWidth;
 
-  // Calculate preview dimensions only when crossing slot boundaries
+  // Calculate preview dimensions
   const previewDimensions = useMemo(() => {
     if (!dragState || (dragState.activeId !== `resize-left-${reservation.id}` && 
         dragState.activeId !== `resize-right-${reservation.id}`)) {
@@ -118,8 +108,7 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
 
     return { left, width };
   }, [
-    dragState?.activeId,
-    dragState?.delta.x,
+    dragState,
     left,
     width,
     startHour,
@@ -130,6 +119,16 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
     config.slotWidth,
     reservation.id
   ]);
+
+  // Don't render if reservation is outside visible hours
+  if (startHour < config.startHour || startHour >= config.endHour) {
+    return null;
+  }
+  
+  // Don't render if end hour is outside visible hours
+  if (endHour < config.startHour || endHour > config.endHour) {
+    return null;
+  }
   
   // Create timezone-aware tooltip
   const startZoned = toZonedTime(startDate, config.timezone);

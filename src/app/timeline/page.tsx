@@ -1,28 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import useTimelineStore from '@/store/useTimelineStore';
-import { seedSectors, seedTables, seedReservations, seedRestaurantConfig } from '@/data/seed-small';
 import { canReserveSlot } from '@/lib/conflictService';
 import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import type { TimelineConfig } from '@/types';
 
 export default function TimelinePage() {
   const { 
-    sectorsById, 
     reservationsById, 
     restaurantConfig,
     ui, 
-    _hasHydrated,
     setSlotWidth, 
     setVisibleDate,
-    upsertSector,
-    upsertTable,
-    addReservation,
-    updateReservation,
-    setRestaurantConfig
+    updateReservation
   } = useTimelineStore();
 
   // State for real-time drag preview
@@ -39,36 +32,7 @@ export default function TimelinePage() {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
   
-  // Seed data if store is empty (only after hydration is complete)
-  useEffect(() => {
-    // Wait for hydration to complete
-    if (!_hasHydrated) {
-      return;
-    }
-
-    const hasData = Object.keys(sectorsById).length > 0;
-    const hasRestaurantConfig = restaurantConfig !== null;
-    
-    
-    if (!hasData || !hasRestaurantConfig) {
-      
-      // Add restaurant configuration
-      setRestaurantConfig(seedRestaurantConfig);
-      
-      // Add sectors
-      seedSectors.forEach(sector => upsertSector(sector));
-      
-      // Add tables
-      seedTables.forEach(table => upsertTable(table));
-      
-      // Add reservations
-      seedReservations.forEach(reservation => addReservation(reservation));
-      
-      // Set visible date to match the reservations (October 2025)
-      setVisibleDate('2025-10-24');
-    } else {
-    }
-  }, [_hasHydrated, sectorsById, restaurantConfig, upsertSector, upsertTable, addReservation, setVisibleDate, setRestaurantConfig]);
+  // No automatic seed initialization - user will use Reset buttons
   
   // Create timeline config
   const config: TimelineConfig = {

@@ -98,20 +98,16 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     
     // Calculate timeline dimensions based on view mode
     const slotsPerDay = getSlotsPerDay(finalConfig);
-    let daysInView = 1;
     let totalSlots = slotsPerDay;
     
     switch (viewMode) {
       case 'day':
-        daysInView = 1;
         totalSlots = slotsPerDay;
         break;
       case '3-day':
-        daysInView = 3;
         totalSlots = slotsPerDay * 3;
         break;
       case 'week':
-        daysInView = 7;
         totalSlots = slotsPerDay * 7;
         break;
       case 'month':

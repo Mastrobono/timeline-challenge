@@ -74,38 +74,6 @@ export function getSlotsPerDay(config: TimelineConfig): number {
 }
 
 /**
- * Compute X position for a slot within a specific day
- */
-export function computeXForSlotAndDay(slotInDay: number, dayIndex: number, config: TimelineConfig): number {
-  const slotsPerDay = getSlotsPerDay(config);
-  const totalSlotIndex = (dayIndex * slotsPerDay) + slotInDay;
-  return slotToPx(totalSlotIndex, config);
-}
-
-/**
- * Get the ISO date string for a reservation based on its properties
- * Extracts date from startTime (ISO format) or falls back to baseDate
- */
-export function getReservationIsoDate(reservation: Reservation, baseDate: string): string {
-  // Extract date from startTime (ISO format)
-  if (reservation.startTime) {
-    return reservation.startTime.split('T')[0]; // Get YYYY-MM-DD part
-  }
-  
-  // Fallback to baseDate if no startTime
-  return baseDate;
-}
-
-/**
- * Format a date string for display in the restaurant timezone
- */
-export function formatDateForDisplay(dateString: string, timezone: string): string {
-  const date = new Date(dateString + 'T00:00:00Z');
-  const zonedDate = toZonedTime(date, timezone);
-  return format(zonedDate, 'EEE, MMM d yyyy');
-}
-
-/**
  * Get today's date in the restaurant timezone
  */
 export function getTodayInTimezone(timezone: string): string {
@@ -134,3 +102,27 @@ export function getCurrentTimePosition(config: TimelineConfig): number | null {
   
   return slotsFromStart * config.slotWidth;
 }
+
+/**
+ * Format a date string for display in the restaurant timezone
+ */
+export function formatDateForDisplay(dateString: string, timezone: string): string {
+  const date = new Date(dateString + 'T00:00:00Z');
+  const zonedDate = toZonedTime(date, timezone);
+  return format(zonedDate, 'EEE, MMM d yyyy');
+}
+
+/**
+ * Get the ISO date string for a reservation based on its properties
+ * Extracts date from startTime (ISO format) or falls back to baseDate
+ */
+export function getReservationIsoDate(reservation: Reservation, baseDate: string): string {
+  // Extract date from startTime (ISO format)
+  if (reservation.startTime) {
+    return reservation.startTime.split('T')[0]; // Get YYYY-MM-DD part
+  }
+  
+  // Fallback to baseDate if no startTime
+  return baseDate;
+}
+

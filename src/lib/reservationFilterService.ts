@@ -72,10 +72,9 @@ export class ReservationFilterService {
    */
   static filterByDate(
     reservation: Reservation,
-    targetDate: string,
-    options: FilterOptions
+    targetDate: string
   ): boolean {
-    const reservationDate = getReservationIsoDate(reservation, targetDate, options);
+    const reservationDate = getReservationIsoDate(reservation, targetDate);
     return reservationDate === targetDate;
   }
 
@@ -89,7 +88,7 @@ export class ReservationFilterService {
     restaurantConfig: RestaurantConfig | null
   ): boolean {
     // First check if reservation is on the correct date
-    if (!this.filterByDate(reservation, targetDate, options)) {
+    if (!this.filterByDate(reservation, targetDate)) {
       return false;
     }
 
