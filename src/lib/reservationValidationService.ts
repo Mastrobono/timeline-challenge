@@ -10,6 +10,7 @@ export interface ValidationOptions {
   restaurantConfig: RestaurantConfig | null;
   tables: Table[];
   existingReservations?: Reservation[];
+  timezone?: string; // Optional timezone for validation
 }
 
 /**
@@ -30,11 +31,15 @@ export class ReservationValidationService {
     const capacityError = this.validateCapacity(reservation, options.tables);
     if (capacityError) errors.push(capacityError);
     
-    // 2. Validate operating hours
-    const hoursError = this.validateOperatingHours(reservation, options.restaurantConfig);
+    // 2. Validate duration
+    const durationError = this.validateDuration(reservation);
+    if (durationError) errors.push(durationError);
+    
+    // 3. Validate operating hours
+    const hoursError = this.validateOperatingHours(reservation, options.restaurantConfig, options.timezone);
     if (hoursError) errors.push(hoursError);
     
-    // 3. Validate conflicts
+    // 4. Validate conflicts
     const conflictError = this.validateConflicts(reservation, options.existingReservations || []);
     if (conflictError) errors.push(conflictError);
     
@@ -112,11 +117,40 @@ export class ReservationValidationService {
   }
   
   /**
+   * Validates that reservation duration is reasonable (max 6 hours)
+   */
+  private static validateDuration(
+    reservation: Reservation
+  ): string | null {
+    if (!reservation.startTime || !reservation.endTime) {
+      return 'Reservation must have both start and end times';
+    }
+    
+    const startTime = new Date(reservation.startTime);
+    const endTime = new Date(reservation.endTime);
+    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+    const durationHours = durationMinutes / 60;
+    
+    // Maximum duration is 6 hours
+    if (durationHours > 6) {
+      return `Reservation duration ${durationHours.toFixed(1)} hours exceeds maximum allowed 6 hours`;
+    }
+    
+    // Minimum duration is 30 minutes
+    if (durationMinutes < 30) {
+      return `Reservation duration ${durationMinutes} minutes is below minimum allowed 30 minutes`;
+    }
+    
+    return null;
+  }
+  
+  /**
    * Validates that reservation is within restaurant operating hours
    */
   private static validateOperatingHours(
     reservation: Reservation,
-    restaurantConfig: RestaurantConfig | null
+    restaurantConfig: RestaurantConfig | null,
+    timezone?: string
   ): string | null {
     if (!reservation.startTime || !reservation.endTime) {
       return 'Reservation must have both start and end times';
@@ -126,9 +160,10 @@ export class ReservationValidationService {
       return 'Restaurant configuration not available';
     }
     
-    const timezone = restaurantConfig.timezone || 'America/Argentina/Buenos_Aires';
-    const startTime = toZonedTime(new Date(reservation.startTime), timezone);
-    const endTime = toZonedTime(new Date(reservation.endTime), timezone);
+    // Use provided timezone or fall back to restaurant timezone
+    const validationTimezone = timezone || restaurantConfig.timezone || 'America/Argentina/Buenos_Aires';
+    const startTime = toZonedTime(new Date(reservation.startTime), validationTimezone);
+    const endTime = toZonedTime(new Date(reservation.endTime), validationTimezone);
     
     const startHour = startTime.getHours();
     const endHour = endTime.getHours();

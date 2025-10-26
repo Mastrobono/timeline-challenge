@@ -54,17 +54,23 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
   const style = {
     transform: CSS.Translate.toString(transform),
     zIndex: isDragging ? 1000 : 10,
+    // Add visual feedback when dragging outside bounds
+    opacity: isDragging ? 0.8 : 1,
   };
   
-  // Convert ISO times to slot positions
+  // Convert ISO times to slot positions using timezone-aware calculation
   const startDate = new Date(startTime);
   const endDate = new Date(endTime);
   
-  // Calculate slot positions based on time
-  const startHour = startDate.getHours();
-  const startMinute = startDate.getMinutes();
-  const endHour = endDate.getHours();
-  const endMinute = endDate.getMinutes();
+  // Convert to the selected timezone for positioning calculation
+  const startZoned = toZonedTime(startDate, config.timezone);
+  const endZoned = toZonedTime(endDate, config.timezone);
+  
+  // Calculate slot positions based on timezone-aware time
+  const startHour = startZoned.getHours();
+  const startMinute = startZoned.getMinutes();
+  const endHour = endZoned.getHours();
+  const endMinute = endZoned.getMinutes();
   
   const startSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
   const endSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
@@ -80,6 +86,7 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
       return { left, width };
     }
 
+    // Use timezone-aware times for preview calculations
     const originalStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
     const originalEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
     const deltaX = dragState.delta.x;
@@ -130,10 +137,7 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
     return null;
   }
   
-  // Create timezone-aware tooltip
-  const startZoned = toZonedTime(startDate, config.timezone);
-  const endZoned = toZonedTime(endDate, config.timezone);
-  
+  // Create timezone-aware tooltip (reuse already calculated zoned times)
   const timeString = `${format(startZoned, 'HH:mm')} - ${format(endZoned, 'HH:mm')}`;
   
   // Priority-based colors

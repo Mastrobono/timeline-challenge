@@ -5,15 +5,19 @@ import { BulkImportService } from '@/lib/bulkImportService';
 import type { Reservation } from '@/types';
 
 export default function Toolbar() {
-  const { ui, setViewMode, goToPrevPeriod, goToNextPeriod, goToToday, initializeWithValidation, clearAllReservations } = useTimelineStore();
-  const { visibleDate, viewMode } = ui;
+  const { ui, setViewMode, setTimezone, goToPrevPeriod, goToNextPeriod, goToToday, initializeWithValidation, clearAllReservations } = useTimelineStore();
+  const { visibleDate, viewMode, timezone } = ui;
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
 
-  const formattedDate = formatDateForDisplay(visibleDate, 'America/Argentina/Buenos_Aires');
+  const formattedDate = formatDateForDisplay(visibleDate, timezone);
 
   const handleViewModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setViewMode(event.target.value as 'day' | '3-day' | 'week' | 'month');
+  };
+
+  const handleTimezoneChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setTimezone(event.target.value);
   };
 
 
@@ -57,14 +61,17 @@ export default function Toolbar() {
     }
   };
 
-  // Unified function to generate 50 valid reservations
+  // Unified function to generate valid reservations in the current timezone
   const generateValidReservations = async (type: 'small' | 'large' = 'small') => {
     const response = await fetch('/api/generate-seeds', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ type })
+      body: JSON.stringify({ 
+        type,
+        timezone: timezone // Pass current timezone from UI state
+      })
     });
     
     if (!response.ok) {
@@ -91,7 +98,14 @@ export default function Toolbar() {
         restaurantConfig: data.restaurantConfig
       });
       
-      setStatus(`✅ Generated and loaded ${data.reservations.length} ${useLarge ? 'large' : 'small'} reservations`);
+      // Wait a bit for the store to update, then check final count
+      setTimeout(() => {
+        const finalCount = Object.keys(useTimelineStore.getState().reservationsById).length;
+        const rejectedCount = data.reservations.length - finalCount;
+        
+        setStatus(`✅ Generated ${data.reservations.length} reservations, ${finalCount} loaded, ${rejectedCount} rejected`);
+      }, 100);
+      
     } catch (error) {
       setStatus(`❌ Error generating seed data: ${error}`);
     } finally {
@@ -286,6 +300,19 @@ export default function Toolbar() {
           <option value="3-day">3-Day</option>
           <option value="week">Week</option>
           <option value="month">Month</option>
+        </select>
+
+        {/* Timezone selector */}
+        <select
+          value={timezone}
+          onChange={handleTimezoneChange}
+          className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          aria-label="Select timezone"
+        >
+          <option value="America/Argentina/Buenos_Aires">Buenos Aires</option>
+          <option value="America/New_York">New York</option>
+          <option value="Europe/London">London</option>
+          <option value="UTC">UTC</option>
         </select>
       </div>
     </div>

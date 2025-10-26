@@ -1,7 +1,7 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
-import { getSlotsPerDay, getCurrentTimePosition } from '@/lib/timeUtils';
+import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
 import { ROW_HEIGHT } from '@/lib/constants';
 import useTimelineStore, { getValidReservationsForSector } from '@/store/useTimelineStore';
 import Toolbar from './Toolbar';
@@ -38,10 +38,11 @@ interface TimelineLayoutProps {
   reservations?: Reservation[];
   sectors?: Sector[];
   dragState?: DragState;
+  onSlotClick?: (table: Table, startTime: string) => void;
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors, dragState }, ref) => {
+  ({ config, tables, reservations, sectors, dragState, onSlotClick }, ref) => {
     // Use store data if props are not provided
     const store = useTimelineStore();
     const { ui, toggleSectorCollapse } = store;
@@ -62,39 +63,60 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
       endHour: 23,
       slotMinutes: 15,
       slotWidth: slotWidth,
-      timezone: 'America/Argentina/Buenos_Aires',
+      timezone: ui.timezone, // Use dynamic timezone from UI state
       viewMode: 'day',
     };
     
     const finalConfig = config || defaultConfig;
     
-    // Filter reservations based on viewMode and visibleDate
-    const filteredReservations = finalReservations.filter(reservation => {
-      // Extract date from startTime (ISO format)
-      const reservationDate = reservation.startTime ? 
-        reservation.startTime.split('T')[0] : // Get YYYY-MM-DD part
-        visibleDate; // Fallback to visibleDate if no startTime
+    // Filter reservations based on viewMode, visibleDate, and timezone
+    const filteredReservations = useMemo(() => {
+      // First filter by date
+      const dateFilteredReservations = finalReservations.filter(reservation => {
+        // Extract date from startTime (ISO format)
+        const reservationDate = reservation.startTime ? 
+          reservation.startTime.split('T')[0] : // Get YYYY-MM-DD part
+          visibleDate; // Fallback to visibleDate if no startTime
+        
+        let isInDateRange = false;
+        
+        switch (viewMode) {
+          case 'day':
+            isInDateRange = reservationDate === visibleDate;
+            break;
+          case '3-day':
+            const day1 = visibleDate;
+            const day2 = format(addDays(new Date(visibleDate), 1), 'yyyy-MM-dd');
+            const day3 = format(addDays(new Date(visibleDate), 2), 'yyyy-MM-dd');
+            isInDateRange = reservationDate === day1 || reservationDate === day2 || reservationDate === day3;
+            break;
+          case 'week':
+            const weekStart = startOfWeek(new Date(visibleDate), { weekStartsOn: 1 }); // Monday
+            const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+            const weekEnd = addDays(weekStart, 6);
+            const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+            isInDateRange = reservationDate >= weekStartStr && reservationDate <= weekEndStr;
+            break;
+          case 'month':
+            isInDateRange = true; // Month view shows all reservations
+            break;
+          default:
+            isInDateRange = true;
+        }
+        
+        return isInDateRange;
+      });
+
+      // Then apply timezone-based filtering to hide reservations outside operating hours
+      const timezoneFilteredReservations = filterReservationsByTimezone(
+        dateFilteredReservations,
+        finalConfig,
+        store.restaurantConfig
+      );
       
-      switch (viewMode) {
-        case 'day':
-          return reservationDate === visibleDate;
-        case '3-day':
-          const day1 = visibleDate;
-          const day2 = format(addDays(new Date(visibleDate), 1), 'yyyy-MM-dd');
-          const day3 = format(addDays(new Date(visibleDate), 2), 'yyyy-MM-dd');
-          return reservationDate === day1 || reservationDate === day2 || reservationDate === day3;
-        case 'week':
-          const weekStart = startOfWeek(new Date(visibleDate), { weekStartsOn: 1 }); // Monday
-          const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-          const weekEnd = addDays(weekStart, 6);
-          const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
-          return reservationDate >= weekStartStr && reservationDate <= weekEndStr;
-        case 'month':
-          return true; // Month view shows all reservations
-        default:
-          return true;
-      }
-    });
+      return timezoneFilteredReservations;
+    }, [finalReservations, visibleDate, viewMode, finalConfig.timezone, finalConfig, store.restaurantConfig]);
+    
     
     // Calculate timeline dimensions based on view mode
     const slotsPerDay = getSlotsPerDay(finalConfig);
@@ -171,12 +193,18 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         
         {/* Scrollable timeline container */}
         <div 
-          className="flex-1 overflow-auto overflow-x-auto " 
+          className="flex-1 overflow-auto" 
           data-testid="timeline-body"
         >
-          <div className="flex h-full" >
+          <div 
+            className="flex h-min-content"
+            style={{
+              width: `${(finalConfig.endHour - finalConfig.startHour) * (60 / finalConfig.slotMinutes) * finalConfig.slotWidth}px`,
+              minWidth: `${(finalConfig.endHour - finalConfig.startHour) * (60 / finalConfig.slotMinutes) * finalConfig.slotWidth}px`
+            }}
+          >
             {/* Left sticky column for table names */}
-            <div className="sticky left-0 z-10 bg-white border-r border-gray-200 min-w-[150px]">
+            <div className="sticky left-0 z-10 bg-white border-r border-gray-200 min-w-[150px] z-70">
               
               {/* Sectors with grouped table rows */}
               {sortedSectors.map(sector => {
@@ -231,13 +259,13 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             </div>
             
             {/* Right scrollable timeline area */}
-            <div className="flex-1 overflow-auto relative">
+            <div className="flex-1 overflow-hidden relative min-h-max">
               {/* Time Header */}
               <TimeHeader config={finalConfig} />
               
               {/* Full-height grid lines container */}
               <div 
-                className="absolute inset-y-0 pointer-events-none z-20"
+                className="absolute inset-y-0 pointer-events-none z-20 h-full"
                 style={{ width: `${timelineWidth}px` }}
               >
                 {/* Generate vertical grid lines spanning full height */}
@@ -323,6 +351,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           reservations={getReservationsForTable(table.id)}
                           config={finalConfig}
                           dragState={dragState}
+                          onSlotClick={onSlotClick}
                         />
                       ))}
                     </div>

@@ -11,9 +11,10 @@ interface TableRowProps {
   reservations: Reservation[];
   config: TimelineConfig;
   dragState?: DragState;
+  onSlotClick?: (table: Table, startTime: string) => void;
 }
 
-export default function TableRow({ table, reservations, config, dragState }: TableRowProps) {
+export default function TableRow({ table, reservations, config, dragState, onSlotClick }: TableRowProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: table.id,
   });
@@ -28,17 +29,19 @@ export default function TableRow({ table, reservations, config, dragState }: Tab
       return;
     }
 
+    // Only proceed if onSlotClick handler is provided
+    if (!onSlotClick) {
+      return;
+    }
+
     // Calculate the slot index based on the horizontal click position
     const slotIndex = pxToSlot(e.nativeEvent.offsetX, config);
     
     // Convert slot index to ISO timestamp
     const startTime = slotToIso(slotIndex, config);
     
-    // Log the table ID and calculated start time
-    console.log({
-      tableId: table.id,
-      startTime: startTime
-    });
+    // Call the onSlotClick handler with table and startTime
+    onSlotClick(table, startTime);
   };
 
   return (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { addDays, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import type { TimelineConfig } from '@/types';
 import { slotToPx, getSlotsPerDay } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
@@ -9,7 +10,7 @@ interface TimeHeaderProps {
 }
 
 export default function TimeHeader({ config }: TimeHeaderProps) {
-  const { startHour, endHour, slotMinutes, slotWidth } = config;
+  const { startHour, endHour, slotMinutes, slotWidth, timezone } = config;
   const { ui } = useTimelineStore();
   const { viewMode, visibleDate } = ui;
   
@@ -65,6 +66,16 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   // Generate time labels for each day
   for (let dayIndex = 0; dayIndex < daysInView; dayIndex++) {
     for (let hour = startHour; hour < endHour; hour++) {
+      // Create a date for this hour in the selected timezone
+      const dayDate = addDays(new Date(visibleDate), dayIndex);
+      const hourDate = new Date(dayDate);
+      hourDate.setHours(hour, 0, 0, 0);
+      
+      // Convert to the selected timezone for display
+      const zonedHourDate = toZonedTime(hourDate, timezone);
+      const displayHour = zonedHourDate.getHours();
+      const displayMinute = zonedHourDate.getMinutes();
+      
       // Add hour markers
       const hourSlot = (dayIndex * slotsPerDay) + (hour - startHour) * (60 / slotMinutes);
       const hourPosition = slotToPx(hourSlot, config);
@@ -74,9 +85,9 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
           key={`hour-${dayIndex}-${hour}`}
           className="absolute top-6 h-8 flex items-center justify-center text-sm font-medium text-gray-700"
           style={{ left: `${hourPosition}px`, transform: 'translateX(-50%)' }}
-          aria-label={`${hour}:00`}
+          aria-label={`${displayHour}:${displayMinute.toString().padStart(2, '0')}`}
         >
-          {hour}:00
+          {displayHour}:{displayMinute.toString().padStart(2, '0')}
         </div>
       );
       
@@ -85,16 +96,24 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
         for (let quarter = 1; quarter < 4; quarter++) {
           const quarterSlot = hourSlot + quarter * (15 / slotMinutes);
           const quarterPosition = slotToPx(quarterSlot, config);
-          const quarterHour = hour + (quarter * 15) / 60;
+          
+          // Create quarter hour date
+          const quarterDate = new Date(dayDate);
+          quarterDate.setHours(hour, quarter * 15, 0, 0);
+          
+          // Convert to selected timezone
+          const zonedQuarterDate = toZonedTime(quarterDate, timezone);
+          const quarterDisplayHour = zonedQuarterDate.getHours();
+          const quarterDisplayMinute = zonedQuarterDate.getMinutes();
           
           timeLabels.push(
             <div
               key={`quarter-${dayIndex}-${hour}-${quarter}`}
               className="absolute top-6 h-6 flex items-center justify-center text-xs text-gray-500"
               style={{ left: `${quarterPosition}px`, transform: 'translateX(-50%)' }}
-              aria-label={`${Math.floor(quarterHour)}:${((quarterHour % 1) * 60).toString().padStart(2, '0')}`}
+              aria-label={`${quarterDisplayHour}:${quarterDisplayMinute.toString().padStart(2, '0')}`}
             >
-              {Math.floor(quarterHour)}:{((quarterHour % 1) * 60).toString().padStart(2, '0')}
+              {quarterDisplayHour}:{quarterDisplayMinute.toString().padStart(2, '0')}
             </div>
           );
         }
@@ -106,7 +125,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   
   return (
     <div 
-      className="sticky top-0 z-30 bg-white border-b border-gray-300"
+      className="sticky top-0 z-30 bg-white border-b border-gray-300 overflow-visible"
       data-testid="timeline-timeheader"
       aria-label="Timeline header"
     >

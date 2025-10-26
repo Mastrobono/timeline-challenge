@@ -1,5 +1,5 @@
 import { addMinutes, differenceInMinutes, format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { TimelineConfig, Reservation } from '@/types';
 
 /**
@@ -11,18 +11,28 @@ export function slotToMinutes(slotIndex: number, config: TimelineConfig): number
 
 /**
  * Convert a slot index to ISO string in the configured timezone
+ * This function creates a time that represents the slot in the target timezone
  */
 export function slotToIso(slotIndex: number, config: TimelineConfig): string {
-  // Create a date at midnight in the restaurant timezone
-  const baseDate = new Date(config.date + 'T00:00:00');
-  const zonedBaseDate = toZonedTime(baseDate, config.timezone);
-  
-  // Add the minutes for this slot
+  // Calculate the actual hour and minute for this slot
+  // slotIndex is relative to startHour, so we need to add startHour to get the actual hour
   const minutesFromMidnight = slotToMinutes(slotIndex, config);
-  const dateWithMinutes = addMinutes(zonedBaseDate, minutesFromMidnight);
+  const totalMinutesFromMidnight = (config.startHour * 60) + minutesFromMidnight;
+  const actualHour = Math.floor(totalMinutesFromMidnight / 60);
+  const actualMinute = totalMinutesFromMidnight % 60;
   
-  // Return ISO string with timezone offset
-  return dateWithMinutes.toISOString();
+  // Create a date string that represents the time in the target timezone
+  const timeString = `${actualHour.toString().padStart(2, '0')}:${actualMinute.toString().padStart(2, '0')}:00`;
+  const dateTimeString = `${config.date}T${timeString}`;
+  
+  // Create a date object - this will be interpreted as local time
+  const localDate = new Date(dateTimeString);
+  
+  // Convert FROM the target timezone TO UTC
+  // This treats the localDate as if it were in the target timezone
+  const utcDate = fromZonedTime(localDate, config.timezone);
+  
+  return utcDate.toISOString();
 }
 
 /**
@@ -39,10 +49,12 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   // Calculate minutes from midnight in the restaurant timezone
   const minutesFromMidnight = differenceInMinutes(zonedDate, zonedConfigDate);
   
-  // Convert to slot index
-  const slotIndex = Math.floor(minutesFromMidnight / config.slotMinutes);
+  // Convert to slot index relative to startHour
+  // slotIndex should be relative to startHour, not from midnight
+  const minutesFromStartHour = minutesFromMidnight - (config.startHour * 60);
+  const slotIndex = Math.floor(minutesFromStartHour / config.slotMinutes);
   
-  return slotIndex;
+  return Math.max(0, slotIndex); // Ensure non-negative slot index
 }
 
 /**
@@ -83,12 +95,50 @@ export function getTodayInTimezone(timezone: string): string {
 }
 
 /**
+ * Filter reservations based on timezone and operating hours
+ * This function hides reservations that fall outside operating hours in the selected timezone
+ */
+export function filterReservationsByTimezone(
+  reservations: Reservation[],
+  config: TimelineConfig,
+  restaurantConfig: { operatingHours: { startHour: number; endHour: number } } | null
+): Reservation[] {
+  if (!restaurantConfig) {
+    return reservations; // No filtering if no restaurant config
+  }
+
+  const filtered = reservations.filter(reservation => {
+    // Convert reservation times to the selected timezone
+    const startDate = new Date(reservation.startTime);
+    const endDate = new Date(reservation.endTime);
+    
+    const startZoned = toZonedTime(startDate, config.timezone);
+    const endZoned = toZonedTime(endDate, config.timezone);
+    
+    const startHour = startZoned.getHours();
+    const endHour = endZoned.getHours();
+    
+    // Check if reservation falls within operating hours in the selected timezone
+    const isWithinOperatingHours = 
+      startHour >= restaurantConfig.operatingHours.startHour && 
+      endHour <= restaurantConfig.operatingHours.endHour;
+    
+    return isWithinOperatingHours;
+  });
+
+  return filtered;
+}
+
+/**
  * Calculate the position for current time indicator
  */
 export function getCurrentTimePosition(config: TimelineConfig): number | null {
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  
+  // Convert current time to the selected timezone
+  const zonedNow = toZonedTime(now, config.timezone);
+  const currentHour = zonedNow.getHours();
+  const currentMinute = zonedNow.getMinutes();
   
   // Check if current time is within visible range
   if (currentHour < config.startHour || currentHour >= config.endHour) {

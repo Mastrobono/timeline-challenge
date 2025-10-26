@@ -20,6 +20,7 @@ export interface TimelineState {
     visibleDate: string;
     viewMode: 'day' | '3-day' | 'week' | 'month';
     startHour: number;
+    timezone: string;
   };
   _hasHydrated: boolean;
 }
@@ -35,6 +36,7 @@ export interface TimelineActions {
   setRestaurantConfig: (config: RestaurantConfig) => void;
   setSlotWidth: (px: number) => void;
   setVisibleDate: (date: string) => void;
+  setTimezone: (timezone: string) => void;
   toggleSectorCollapse: (sectorId: UUID) => void;
   setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => void;
   goToNextPeriod: () => void;
@@ -116,7 +118,7 @@ export const getValidReservationsForSector = (
       endHour: 23,
       slotMinutes: 15,
       slotWidth: 60,
-      timezone: 'America/Argentina/Buenos_Aires',
+      timezone: state.ui.timezone,
       viewMode: 'day'
     },
     restaurantConfig
@@ -139,6 +141,7 @@ const useTimelineStore = create<TimelineStore>()(
         visibleDate: '2025-10-24',
         viewMode: 'day',
         startHour: 7,
+        timezone: 'America/Argentina/Buenos_Aires',
       },
       _hasHydrated: false,
 
@@ -153,14 +156,14 @@ const useTimelineStore = create<TimelineStore>()(
           // Validate reservation times before adding
           if (reservation.endTime) {
             const endTime = new Date(reservation.endTime);
-            const timezone = state.restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+            const timezone = state.ui.timezone;
             const zonedEndTime = toZonedTime(endTime, timezone);
             const endHour = zonedEndTime.getHours();
             const endMinutes = zonedEndTime.getMinutes();
             const restaurantEndHour = state.restaurantConfig?.operatingHours.endHour || 22;
             
-            // Check if reservation ends after restaurant closes
-            if (endHour > restaurantEndHour || (endHour === restaurantEndHour && endMinutes > 45)) {
+            // Check if reservation ends after restaurant closes (allow 1 hour buffer)
+            if (endHour > restaurantEndHour + 1) {
               return state; // Don't add the reservation
             }
           }
@@ -180,7 +183,7 @@ const useTimelineStore = create<TimelineStore>()(
           const newTableReservations = [...tableReservations];
           newTableReservations.splice(insertIndex, 0, id);
           
-          return {
+          const newState = {
             ...state,
             reservationsById: newReservationsById,
             reservationsByTable: {
@@ -188,6 +191,8 @@ const useTimelineStore = create<TimelineStore>()(
               [tableId]: newTableReservations,
             },
           };
+          
+          return newState;
         });
       },
 
@@ -201,7 +206,7 @@ const useTimelineStore = create<TimelineStore>()(
           // Validate reservation times before updating
           if (updatedReservation.endTime) {
             const endTime = new Date(updatedReservation.endTime);
-            const timezone = state.restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+            const timezone = state.ui.timezone;
             const zonedEndTime = toZonedTime(endTime, timezone);
             const endHour = zonedEndTime.getHours();
             const endMinutes = zonedEndTime.getMinutes();
@@ -366,6 +371,16 @@ const useTimelineStore = create<TimelineStore>()(
         }));
       },
 
+      setTimezone: (timezone: string) => {
+        set((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            timezone: timezone,
+          },
+        }));
+      },
+
       toggleSectorCollapse: (sectorId: UUID) => {
         set((state) => ({
           ...state,
@@ -458,7 +473,7 @@ const useTimelineStore = create<TimelineStore>()(
           ...state,
           ui: {
             ...state.ui,
-            visibleDate: getTodayInTimezone('America/Argentina/Buenos_Aires'),
+            visibleDate: getTodayInTimezone(state.ui.timezone),
           },
         }));
       },
@@ -494,8 +509,6 @@ const useTimelineStore = create<TimelineStore>()(
               existingReservations: []
             }
           );
-          
-          ReservationValidationService.logValidationResults();
           
           // Build tables and sectors maps
           const tablesById = tables.reduce((acc, table) => {

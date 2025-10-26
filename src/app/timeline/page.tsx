@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent, closestCenter, rectIntersection } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
+import CreateReservationModal from '@/components/timeline/CreateReservationModal';
 import useTimelineStore from '@/store/useTimelineStore';
 import { canReserveSlot } from '@/lib/conflictService';
 import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
-import type { TimelineConfig } from '@/types';
+import type { TimelineConfig, Table } from '@/types';
+
 
 export default function TimelinePage() {
   const { 
@@ -15,8 +17,13 @@ export default function TimelinePage() {
     ui, 
     setSlotWidth, 
     setVisibleDate,
-    updateReservation
+    updateReservation,
+    addReservation,
+    tablesById
   } = useTimelineStore();
+  
+  // Counter for rejected reservations
+  const [rejectedCount, setRejectedCount] = useState(0);
 
   // State for real-time drag preview
   const [dragState, setDragState] = useState<{
@@ -28,6 +35,13 @@ export default function TimelinePage() {
     delta: { x: 0, y: 0 },
     dragType: null,
   });
+
+  // State for create reservation modal
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    table: Table | null;
+    startTime: string | null;
+  }>({ isOpen: false, table: null, startTime: null });
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
@@ -42,7 +56,7 @@ export default function TimelinePage() {
     slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
     slotWidth: ui.slotWidth,
     viewMode: ui.viewMode,
-    timezone: restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires',
+    timezone: ui.timezone, // Use dynamic timezone from UI state
   };
   
   // Zoom controls
@@ -58,6 +72,23 @@ export default function TimelinePage() {
   
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setVisibleDate(event.target.value);
+  };
+
+  // Modal handlers
+  const handleOpenCreateModal = (table: Table, startTime: string) => {
+    setModalState({
+      isOpen: true,
+      table,
+      startTime
+    });
+  };
+
+  const handleCloseCreateModal = () => {
+    setModalState({
+      isOpen: false,
+      table: null,
+      startTime: null
+    });
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -131,8 +162,12 @@ export default function TimelinePage() {
       // Calculate new start slot based on delta
       const newStartSlot = Math.max(0, originalStartSlot + pxToSlot(deltaX, config));
       
-      // Ensure new start is before end and duration is valid (at least 1 slot)
-      if (newStartSlot >= originalEndSlot) {
+      // Calculate total slots available in the timeline
+      const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
+      
+      // Ensure new start is before end and duration is valid (at least 2 slots = 30 minutes)
+      const newDurationSlots = originalEndSlot - newStartSlot;
+      if (newStartSlot >= originalEndSlot || originalEndSlot > totalSlots || newDurationSlots < 2) {
         return;
       }
       
@@ -169,8 +204,12 @@ export default function TimelinePage() {
       // Calculate new end slot based on delta
       const newEndSlot = Math.max(originalStartSlot + 1, originalEndSlot + pxToSlot(deltaX, config));
       
-      // Ensure new end is after start
-      if (newEndSlot <= originalStartSlot) {
+      // Calculate total slots available in the timeline
+      const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
+      
+      // Ensure new end is after start and within timeline bounds (at least 2 slots = 30 minutes)
+      const newDurationSlots = newEndSlot - originalStartSlot;
+      if (newEndSlot <= originalStartSlot || newEndSlot > totalSlots || newDurationSlots < 2) {
         return;
       }
       
@@ -214,6 +253,14 @@ export default function TimelinePage() {
       const duration = originalEndSlot - originalStartSlot;
       const newEndSlot = newStartSlot + duration;
       
+      // Calculate total slots available in the timeline
+      const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
+      
+      // Prevent dragging outside timeline bounds - be more strict
+      if (newStartSlot < 0 || newEndSlot > totalSlots || newStartSlot >= totalSlots) {
+        return;
+      }
+      
       // Check if the new position is valid (no conflicts)
       const allReservations = Object.values(reservationsById);
       const canMove = canReserveSlot(
@@ -245,7 +292,8 @@ export default function TimelinePage() {
   
     return (
     <DndContext 
-      sensors={sensors} 
+      sensors={sensors}
+      collisionDetection={rectIntersection}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
@@ -299,8 +347,18 @@ export default function TimelinePage() {
         <TimelineLayout 
           config={config} 
           dragState={dragState}
+          onSlotClick={handleOpenCreateModal}
         />
       </div>
+      
+      {/* Create Reservation Modal */}
+      <CreateReservationModal
+        isOpen={modalState.isOpen}
+        table={modalState.table}
+        startTime={modalState.startTime}
+        config={config}
+        onClose={handleCloseCreateModal}
+      />
       </div>
     </DndContext>
   );
