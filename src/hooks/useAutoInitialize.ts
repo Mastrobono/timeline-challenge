@@ -42,8 +42,8 @@ export function useAutoInitialize() {
       try {
         console.log('🚀 Auto-inicializando store con static seed...');
         
-        // Cargar el seed pequeño por defecto
-        const seedData = await loadStaticSeed('small');
+        // Cargar el seed estático
+        const seedData = await loadStaticSeed();
         
         console.log('📁 Static seed cargado:', {
           timezone: seedData.metadata.timezone,

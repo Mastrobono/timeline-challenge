@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "generate-seeds": "node scripts/generate-seeds.js",
-    "generate-static-seeds": "node scripts/generate-static-seeds.js",
+    "generate-static-seeds": "node scripts/generate-static-seeds.js small",
+    "generate-static-seeds:large": "node scripts/generate-static-seeds.js large",
     "dev": "next dev --turbopack",
     "build": "npm run generate-static-seeds && next build --turbopack",
     "start": "next start",

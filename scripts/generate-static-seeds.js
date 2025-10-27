@@ -39,7 +39,8 @@ function generateRestaurantConfig(timezone) {
   };
 }
 
-function generateTablesAndSectors() {
+function generateTablesAndSectors(isLarge = false) {
+  // Base sectors
   const sectors = [
     {
       id: 'sector-1',
@@ -61,23 +62,123 @@ function generateTablesAndSectors() {
     }
   ];
 
-  const tables = [
-    // Main Dining tables
-    { id: 'table-1', sectorId: 'sector-1', name: 'Table 1', capacity: { min: 2, max: 4 }, sortOrder: 1 },
-    { id: 'table-2', sectorId: 'sector-1', name: 'Table 2', capacity: { min: 5, max: 6 }, sortOrder: 2 },
-    { id: 'table-3', sectorId: 'sector-1', name: 'Table 3', capacity: { min: 2, max: 4 }, sortOrder: 3 },
-    { id: 'table-4', sectorId: 'sector-1', name: 'Table 4', capacity: { min: 3, max: 5 }, sortOrder: 4 },
-    { id: 'table-5', sectorId: 'sector-1', name: 'Table 5', capacity: { min: 2, max: 4 }, sortOrder: 5 },
+  // For large, add more sectors
+  if (isLarge) {
+    sectors.push(
+      {
+        id: 'sector-4',
+        name: 'Bar Area',
+        color: '#8B5CF6',
+        sortOrder: 4
+      },
+      {
+        id: 'sector-5',
+        name: 'Outdoor Patio',
+        color: '#EC4899',
+        sortOrder: 5
+      },
+      {
+        id: 'sector-6',
+        name: 'VIP Lounge',
+        color: '#EF4444',
+        sortOrder: 6
+      }
+    );
+  }
+
+  const tables = [];
+  
+  if (isLarge) {
+    // Generate 60+ tables for large dataset
+    let tableCounter = 1;
     
-    // Terrace tables
-    { id: 'table-6', sectorId: 'sector-2', name: 'Table 6', capacity: { min: 2, max: 4 }, sortOrder: 1 },
-    { id: 'table-7', sectorId: 'sector-2', name: 'Table 7', capacity: { min: 4, max: 6 }, sortOrder: 2 },
-    { id: 'table-8', sectorId: 'sector-2', name: 'Table 8', capacity: { min: 2, max: 4 }, sortOrder: 3 },
+    // Main Dining - 20 tables
+    for (let i = 0; i < 20; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-1',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 2, max: 4 + Math.floor(Math.random() * 4) },
+        sortOrder: tableCounter++
+      });
+    }
     
-    // Private Room tables
-    { id: 'table-9', sectorId: 'sector-3', name: 'Table 9', capacity: { min: 8, max: 12 }, sortOrder: 1 },
-    { id: 'table-10', sectorId: 'sector-3', name: 'Table 10', capacity: { min: 6, max: 10 }, sortOrder: 2 }
-  ];
+    // Terrace - 15 tables
+    for (let i = 0; i < 15; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-2',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 2, max: 4 + Math.floor(Math.random() * 3) },
+        sortOrder: tableCounter++
+      });
+    }
+    
+    // Private Room - 10 tables
+    for (let i = 0; i < 10; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-3',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 8, max: 12 + Math.floor(Math.random() * 4) },
+        sortOrder: tableCounter++
+      });
+    }
+    
+    // Bar Area - 12 tables
+    for (let i = 0; i < 12; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-4',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 2, max: 4 },
+        sortOrder: tableCounter++
+      });
+    }
+    
+    // Outdoor Patio - 8 tables
+    for (let i = 0; i < 8; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-5',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 4, max: 6 },
+        sortOrder: tableCounter++
+      });
+    }
+    
+    // VIP Lounge - 5 tables
+    for (let i = 0; i < 5; i++) {
+      tables.push({
+        id: `table-${tableCounter}`,
+        sectorId: 'sector-6',
+        name: `Table ${tableCounter}`,
+        capacity: { min: 6, max: 10 },
+        sortOrder: tableCounter++
+      });
+    }
+    
+    // Total: 20 + 15 + 10 + 12 + 8 + 5 = 70 tables
+  } else {
+    // Small dataset - 10 tables
+    tables.push(
+      // Main Dining tables
+      { id: 'table-1', sectorId: 'sector-1', name: 'Table 1', capacity: { min: 2, max: 4 }, sortOrder: 1 },
+      { id: 'table-2', sectorId: 'sector-1', name: 'Table 2', capacity: { min: 5, max: 6 }, sortOrder: 2 },
+      { id: 'table-3', sectorId: 'sector-1', name: 'Table 3', capacity: { min: 2, max: 4 }, sortOrder: 3 },
+      { id: 'table-4', sectorId: 'sector-1', name: 'Table 4', capacity: { min: 3, max: 5 }, sortOrder: 4 },
+      { id: 'table-5', sectorId: 'sector-1', name: 'Table 5', capacity: { min: 2, max: 4 }, sortOrder: 5 },
+      
+      // Terrace tables
+      { id: 'table-6', sectorId: 'sector-2', name: 'Table 6', capacity: { min: 2, max: 4 }, sortOrder: 1 },
+      { id: 'table-7', sectorId: 'sector-2', name: 'Table 7', capacity: { min: 4, max: 6 }, sortOrder: 2 },
+      { id: 'table-8', sectorId: 'sector-2', name: 'Table 8', capacity: { min: 2, max: 4 }, sortOrder: 3 },
+      
+      // Private Room tables
+      { id: 'table-9', sectorId: 'sector-3', name: 'Table 9', capacity: { min: 8, max: 12 }, sortOrder: 1 },
+      { id: 'table-10', sectorId: 'sector-3', name: 'Table 10', capacity: { min: 6, max: 10 }, sortOrder: 2 }
+    );
+  }
 
   return { sectors, tables };
 }
@@ -96,13 +197,13 @@ function generateReservationsInTimezone(tables, sectors, restaurantConfig, timez
   
   // Generate more reservations than needed to account for filtering
   const targetCount = count;
-  const generateCount = Math.ceil(count * 2); // Generate 100% more to account for filtering
+  const generateCount = Math.ceil(count * 1.5); // Generate 50% more to account for filtering
   const reservations = [];
   
   // Calculate total available slots across all tables and days
   const totalSlotsPerTablePerDay = totalSlotsPerDay;
   const totalTables = tables.length;
-  const totalDays = count > 100 ? 14 : 7; // Use 2 weeks for large datasets
+  const totalDays = count >= 400 ? 30 : count >= 50 ? 14 : 7; // Use 30 days for 400+, 14 for 50+, 7 for small
   const totalAvailableSlots = totalSlotsPerTablePerDay * totalTables * totalDays;
   
   // Generate more reservations than needed
@@ -111,7 +212,7 @@ function generateReservationsInTimezone(tables, sectors, restaurantConfig, timez
     const table = tables[Math.floor(Math.random() * tables.length)];
     
     // Extend day range for large datasets
-    const maxDays = targetCount > 100 ? 14 : 7; // Use 2 weeks for large datasets
+    const maxDays = totalDays;
     const dayOffset = Math.floor(Math.random() * maxDays); // 0 to maxDays-1 days from today
     const reservationDate = new Date(today.getTime() + (dayOffset * 24 * 60 * 60 * 1000));
     
@@ -163,6 +264,30 @@ function generateReservationsInTimezone(tables, sectors, restaurantConfig, timez
     const utcStartTime = fromZonedTime(reservationDateTime, timezone);
     const utcEndTime = new Date(utcStartTime.getTime() + (durationSlots * slotMinutes * 60000));
     
+    // Generate realistic party size based on table capacity
+    // Small tables (max 4-6): prefer smaller groups (1-4)
+    // Medium tables (max 6-10): mixed groups (2-8) 
+    // Large tables (max 10+): prefer larger groups (4-max)
+    let partySize;
+    if (table.capacity.max <= 6) {
+      // Small tables: 1 to max, weighted toward smaller numbers
+      const random = Math.random();
+      if (random < 0.4) partySize = 1;
+      else if (random < 0.7) partySize = 2;
+      else if (random < 0.9) partySize = 3;
+      else partySize = Math.floor(Math.random() * (table.capacity.max - 3)) + 4;
+    } else if (table.capacity.max <= 10) {
+      // Medium tables: 2 to max, more balanced
+      partySize = Math.floor(Math.random() * (table.capacity.max - 1)) + 2;
+    } else {
+      // Large tables: prefer larger groups, minimum 4 people
+      const minParty = Math.max(4, Math.floor(table.capacity.max * 0.3));
+      partySize = Math.floor(Math.random() * (table.capacity.max - minParty + 1)) + minParty;
+    }
+    
+    // Ensure party size doesn't exceed table capacity
+    partySize = Math.min(partySize, table.capacity.max);
+
     const reservation = {
       id: `res-${Date.now()}-${i}`,
       tableId: table.id,
@@ -172,7 +297,7 @@ function generateReservationsInTimezone(tables, sectors, restaurantConfig, timez
         email: `customer${i}@example.com`,
         notes: Math.random() > 0.7 ? `Special request ${i}` : undefined
       },
-      partySize: Math.floor(Math.random() * (table.capacity.max - table.capacity.min + 1)) + table.capacity.min,
+      partySize: partySize,
       startTime: utcStartTime.toISOString(),
       endTime: utcEndTime.toISOString(),
       durationMinutes: durationSlots * slotMinutes,
@@ -203,9 +328,9 @@ const timezones = [
   'America/Chicago'
 ];
 
-// Generate small seed
-function generateSmallSeed() {
-  console.log('🌱 Generating small seed...');
+// Generate seed based on type
+function generateSeed(seedType) {
+  console.log(`🌱 Generating ${seedType} seed...`);
   
   // Pick a random timezone
   const timezone = timezones[Math.floor(Math.random() * timezones.length)];
@@ -215,10 +340,15 @@ function generateSmallSeed() {
   const restaurantConfig = generateRestaurantConfig(timezone);
   
   // Generate tables and sectors
-  const { tables, sectors } = generateTablesAndSectors();
+  const isLarge = seedType === 'large';
+  const { tables, sectors } = generateTablesAndSectors(isLarge);
+  
+  // Determine reservation count
+  const reservationCount = isLarge ? 450 : 50; // Large: 450, Small: 50
+  console.log(`🎯 Generating ${reservationCount} reservations for ${tables.length} tables...`);
   
   // Generate reservations
-  const reservations = generateReservationsInTimezone(tables, sectors, restaurantConfig, timezone, 20);
+  const reservations = generateReservationsInTimezone(tables, sectors, restaurantConfig, timezone, reservationCount);
   
   const seedData = {
     restaurantConfig,
@@ -228,57 +358,23 @@ function generateSmallSeed() {
     metadata: {
       generatedAt: new Date().toISOString(),
       timezone,
-      type: 'small',
+      type: seedType,
       reservationsCount: reservations.length,
       tablesCount: tables.length,
       sectorsCount: sectors.length
     }
   };
   
-  // Write to file
-  const filePath = path.join(__dirname, '../public/seeds/small.json');
+  // Ensure public directory exists
+  const publicDir = path.join(__dirname, '../public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+  
+  // Write to single file
+  const filePath = path.join(publicDir, 'static-seed.json');
   fs.writeFileSync(filePath, JSON.stringify(seedData, null, 2));
-  console.log(`✅ Small seed generated: ${filePath}`);
-  
-  return seedData;
-}
-
-// Generate large seed
-function generateLargeSeed() {
-  console.log('🌱 Generating large seed...');
-  
-  // Pick a random timezone
-  const timezone = timezones[Math.floor(Math.random() * timezones.length)];
-  console.log(`📍 Selected timezone: ${timezone}`);
-  
-  // Generate restaurant config
-  const restaurantConfig = generateRestaurantConfig(timezone);
-  
-  // Generate tables and sectors
-  const { tables, sectors } = generateTablesAndSectors();
-  
-  // Generate reservations
-  const reservations = generateReservationsInTimezone(tables, sectors, restaurantConfig, timezone, 50);
-  
-  const seedData = {
-    restaurantConfig,
-    tables,
-    sectors,
-    reservations,
-    metadata: {
-      generatedAt: new Date().toISOString(),
-      timezone,
-      type: 'large',
-      reservationsCount: reservations.length,
-      tablesCount: tables.length,
-      sectorsCount: sectors.length
-    }
-  };
-  
-  // Write to file
-  const filePath = path.join(__dirname, '../public/seeds/large.json');
-  fs.writeFileSync(filePath, JSON.stringify(seedData, null, 2));
-  console.log(`✅ Large seed generated: ${filePath}`);
+  console.log(`✅ Seed generated: ${filePath}`);
   
   return seedData;
 }
@@ -287,17 +383,31 @@ function generateLargeSeed() {
 function main() {
   console.log('🚀 Starting static seed generation...');
   
+  // Read command-line argument
+  const seedTypeArg = process.argv[2] || 'small';
+  
+  // Validate argument
+  if (seedTypeArg !== 'small' && seedTypeArg !== 'large') {
+    console.error('❌ Error: Invalid seed type. Must be "small" or "large"');
+    console.log('Usage: node generate-static-seeds.js [small|large]');
+    console.log('Default: small');
+    process.exit(1);
+  }
+  
   try {
-    const smallSeed = generateSmallSeed();
-    const largeSeed = generateLargeSeed();
+    const seedData = generateSeed(seedTypeArg);
     
     console.log('\n📊 Summary:');
-    console.log(`Small seed: ${smallSeed.metadata.reservationsCount} reservations in ${smallSeed.metadata.timezone}`);
-    console.log(`Large seed: ${largeSeed.metadata.reservationsCount} reservations in ${largeSeed.metadata.timezone}`);
+    console.log(`Seed type: ${seedData.metadata.type}`);
+    console.log(`Reservations: ${seedData.metadata.reservationsCount}`);
+    console.log(`Tables: ${seedData.metadata.tablesCount}`);
+    console.log(`Sectors: ${seedData.metadata.sectorsCount}`);
+    console.log(`Timezone: ${seedData.metadata.timezone}`);
+    console.log(`Output file: public/static-seed.json`);
     
-    console.log('\n✅ Static seeds generated successfully!');
+    console.log('\n✅ Static seed generated successfully!');
   } catch (error) {
-    console.error('❌ Error generating seeds:', error);
+    console.error('❌ Error generating seed:', error);
     process.exit(1);
   }
 }
@@ -307,4 +417,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { generateSmallSeed, generateLargeSeed };
+module.exports = { generateSeed };

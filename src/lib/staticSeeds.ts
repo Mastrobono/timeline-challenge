@@ -16,19 +16,19 @@ export interface StaticSeedData {
 }
 
 /**
- * Load static seed data from JSON files
+ * Load static seed data from the single JSON file
  */
-export async function loadStaticSeed(type: 'small' | 'large'): Promise<StaticSeedData> {
+export async function loadStaticSeed(): Promise<StaticSeedData> {
   try {
-    const response = await fetch(`/seeds/${type}.json`);
+    const response = await fetch('/static-seed.json');
     
     if (!response.ok) {
-      throw new Error(`Failed to load ${type} seed: ${response.statusText}`);
+      throw new Error(`Failed to load static seed: ${response.statusText}`);
     }
     
     const seedData: StaticSeedData = await response.json();
     
-    console.log(`📁 Loaded ${type} seed:`, {
+    console.log(`📁 Loaded ${seedData.metadata.type} seed:`, {
       timezone: seedData.metadata.timezone,
       reservationsCount: seedData.metadata.reservationsCount,
       tablesCount: seedData.metadata.tablesCount,
@@ -38,27 +38,20 @@ export async function loadStaticSeed(type: 'small' | 'large'): Promise<StaticSee
     
     return seedData;
   } catch (error) {
-    console.error(`❌ Error loading ${type} seed:`, error);
+    console.error('❌ Error loading static seed:', error);
     throw error;
   }
 }
 
 /**
- * Check if static seeds exist
+ * Check if static seed exists
  */
-export async function checkStaticSeedsExist(): Promise<{ small: boolean; large: boolean }> {
+export async function checkStaticSeedExists(): Promise<boolean> {
   try {
-    const [smallResponse, largeResponse] = await Promise.all([
-      fetch('/seeds/small.json', { method: 'HEAD' }),
-      fetch('/seeds/large.json', { method: 'HEAD' })
-    ]);
-    
-    return {
-      small: smallResponse.ok,
-      large: largeResponse.ok
-    };
+    const response = await fetch('/static-seed.json', { method: 'HEAD' });
+    return response.ok;
   } catch (error) {
-    console.error('❌ Error checking static seeds:', error);
-    return { small: false, large: false };
+    console.error('❌ Error checking static seed:', error);
+    return false;
   }
 }
