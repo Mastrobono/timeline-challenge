@@ -2,7 +2,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import type { Table, Reservation, TimelineConfig, DragState } from '@/types';
 import { ROW_HEIGHT } from '@/lib/constants';
-import { slotToIso, pxToSlot } from '@/lib/timeUtils';
+import { slotToIso, pxToSlot, isoToSlotIndex } from '@/lib/timeUtils';
 import ReservationBlock from './ReservationBlock';
 
 
@@ -11,10 +11,16 @@ interface TableRowProps {
   reservations: Reservation[];
   config: TimelineConfig;
   dragState?: DragState;
+  selectedSlot?: {
+    tableId: string | null;
+    startTime: string | null;
+  };
+  editingReservation?: string | null;
   onSlotClick?: (table: Table, startTime: string) => void;
+  onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
 }
 
-export default function TableRow({ table, reservations, config, dragState, onSlotClick }: TableRowProps) {
+export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick }: TableRowProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: table.id,
   });
@@ -35,7 +41,8 @@ export default function TableRow({ table, reservations, config, dragState, onSlo
     }
 
     // Calculate the slot index based on the horizontal click position
-    const slotIndex = pxToSlot(e.nativeEvent.offsetX, config);
+    const clickX = e.nativeEvent.offsetX;
+    const slotIndex = pxToSlot(clickX, config);
     
     // Convert slot index to ISO timestamp
     const startTime = slotToIso(slotIndex, config);
@@ -43,6 +50,24 @@ export default function TableRow({ table, reservations, config, dragState, onSlo
     // Call the onSlotClick handler with table and startTime
     onSlotClick(table, startTime);
   };
+
+  // Check if this table row has a selected slot
+  const isSlotSelected = selectedSlot?.tableId === table.id && selectedSlot?.startTime;
+  
+  // Calculate position for selected slot overlay
+  const getSelectedSlotPosition = () => {
+    if (!isSlotSelected || !selectedSlot?.startTime) return null;
+    
+    // Convert startTime to slot index using the proper utility function
+    const startSlot = isoToSlotIndex(selectedSlot.startTime, config);
+    
+    return {
+      left: startSlot * config.slotWidth,
+      width: config.slotWidth
+    };
+  };
+
+  const selectedSlotPosition = getSelectedSlotPosition();
 
   return (
     <div 
@@ -52,12 +77,23 @@ export default function TableRow({ table, reservations, config, dragState, onSlo
       style={{ height: `${ROW_HEIGHT}px` }}
     >
       <div 
-        className="relative h-full cursor-pointer"
+        className="relative h-full"
         onClick={handleSlotClick}
         style={{ 
           width: `${(config.endHour - config.startHour) * (60 / config.slotMinutes) * config.slotWidth}px` 
         }}
       >
+        {/* Selected slot overlay */}
+        {selectedSlotPosition && (
+          <div
+            className="absolute top-0 bottom-0 bg-blue-200 bg-opacity-40 border-2 border-blue-500 border-opacity-60 pointer-events-none z-50"
+            style={{
+              left: `${selectedSlotPosition.left}px`,
+              width: `${selectedSlotPosition.width}px`
+            }}
+          />
+        )}
+        
         {/* Render reservation blocks */}
         {reservations.map((reservation) => (
           <ReservationBlock
@@ -65,6 +101,9 @@ export default function TableRow({ table, reservations, config, dragState, onSlo
             reservation={reservation}
             config={config}
             dragState={dragState}
+            table={table}
+            editingReservation={editingReservation}
+            onEditClick={onEditClick}
           />
         ))}
       </div>

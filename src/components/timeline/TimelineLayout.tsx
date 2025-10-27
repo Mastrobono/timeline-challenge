@@ -38,11 +38,18 @@ interface TimelineLayoutProps {
   reservations?: Reservation[];
   sectors?: Sector[];
   dragState?: DragState;
+  selectedSlot?: {
+    tableId: string | null;
+    startTime: string | null;
+  };
+  editingReservation?: string | null;
   onSlotClick?: (table: Table, startTime: string) => void;
+  onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors, dragState, onSlotClick }, ref) => {
+  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick, scrollContainerRef }, ref) => {
     // Use store data if props are not provided
     const store = useTimelineStore();
     const { ui, toggleSectorCollapse } = store;
@@ -195,6 +202,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         
         {/* Scrollable timeline container */}
         <div 
+          ref={scrollContainerRef}
           className="flex-1 overflow-auto" 
           data-testid="timeline-body"
         >
@@ -353,7 +361,10 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           reservations={getReservationsForTable(table.id)}
                           config={finalConfig}
                           dragState={dragState}
+                          selectedSlot={selectedSlot}
+                          editingReservation={editingReservation}
                           onSlotClick={onSlotClick}
+                          onEditClick={onEditClick}
                         />
                       ))}
                     </div>

@@ -21,6 +21,9 @@ const statusOptions = [
   { id: 'PENDING', name: 'Pending', color: STATUS_COLORS.PENDING },
   { id: 'CONFIRMED', name: 'Confirmed', color: STATUS_COLORS.CONFIRMED },
   { id: 'SEATED', name: 'Seated', color: STATUS_COLORS.SEATED },
+  { id: 'FINISHED', name: 'Finished', color: STATUS_COLORS.FINISHED },
+  { id: 'NO_SHOW', name: 'No Show', color: STATUS_COLORS.NO_SHOW },
+  { id: 'CANCELLED', name: 'Cancelled', color: STATUS_COLORS.CANCELLED },
 ];
 
 const priorityOptions = [
@@ -66,13 +69,18 @@ export default function ReservationDrawer({
         const statusOption = statusOptions.find(s => s.id === reservation.status) || statusOptions[1];
         const priorityOption = priorityOptions.find(p => p.id === reservation.priority) || priorityOptions[0];
         
+        // Calculate actual duration from start and end times
+        const startTime = new Date(reservation.startTime);
+        const endTime = new Date(reservation.endTime);
+        const actualDurationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+        
         setFormData({
           customerName: reservation.customer.name,
           customerPhone: reservation.customer.phone,
           customerEmail: reservation.customer.email || '',
           customerNotes: reservation.customer.notes || '',
           partySize: reservation.partySize,
-          durationMinutes: reservation.durationMinutes,
+          durationMinutes: actualDurationMinutes,
           status: statusOption,
           priority: priorityOption,
           notes: reservation.notes || ''

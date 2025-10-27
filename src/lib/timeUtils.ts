@@ -78,10 +78,10 @@ export function slotToPx(slotIndex: number, config: TimelineConfig): number {
 
 /**
  * Convert pixel position to slot index
- * For resize operations, we need precise calculation
+ * For click operations, we need to select the exact slot clicked
  */
 export function pxToSlot(x: number, config: TimelineConfig): number {
-  return Math.round(x / config.slotWidth);
+  return Math.floor(x / config.slotWidth);
 }
 
 /**
