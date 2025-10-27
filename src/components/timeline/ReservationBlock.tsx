@@ -4,6 +4,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import type { Reservation, TimelineConfig, DragState } from '@/types';
+import { STATUS_COLORS } from '@/lib/constants';
 
 
 interface ReservationBlockProps {
@@ -140,13 +141,6 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
   // Create timezone-aware tooltip (reuse already calculated zoned times)
   const timeString = `${format(startZoned, 'HH:mm')} - ${format(endZoned, 'HH:mm')}`;
   
-  // Priority-based colors
-  const priorityColors = {
-    STANDARD: 'bg-blue-500',
-    VIP: 'bg-purple-500',
-    LARGE_GROUP: 'bg-orange-500'
-  };
-  
   return (
     <div
       ref={setNodeRef}
@@ -159,7 +153,7 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
       {...listeners}
       {...attributes}
       data-reservation-id={reservation.id}
-      className={`absolute left-0 rounded px-2 py-1 text-xs font-medium ${priorityColors[priority]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
+      className={`group absolute left-0 rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[reservation.status]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50' : ''
       } ${
         dragState?.activeId === `resize-left-${reservation.id}` || 
@@ -167,10 +161,26 @@ export default function ReservationBlock({ reservation, config, dragState }: Res
           ? 'ring-2 ring-blue-400 ring-opacity-50' 
           : ''
       }`}
-      title={`${customer.name} (${partySize} people) - ${timeString}`}
     >
       <div className="truncate font-semibold">{customer.name}</div>
       <div className="text-xs opacity-90">{partySize} people</div>
+      
+      {/* Styled Tooltip */}
+      <div className="absolute z-20 p-3 bg-gray-800 text-white rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none min-w-[200px] -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full">
+        <div className="text-sm font-semibold mb-2">{customer.name}</div>
+        <div className="space-y-1 text-xs">
+          <div><span className="font-medium">Time:</span> {timeString}</div>
+          <div><span className="font-medium">Party Size:</span> {partySize} people</div>
+          <div><span className="font-medium">Status:</span> {reservation.status}</div>
+          <div><span className="font-medium">Priority:</span> {reservation.priority}</div>
+          <div><span className="font-medium">Phone:</span> {customer.phone}</div>
+          {customer.notes && (
+            <div><span className="font-medium">Notes:</span> {customer.notes}</div>
+          )}
+        </div>
+        {/* Tooltip arrow */}
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+      </div>
       
       {/* Left Resize Handle */}
       <div 
