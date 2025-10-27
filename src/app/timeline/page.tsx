@@ -3,14 +3,14 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent, closestCenter, rectIntersection } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
-import CreateReservationModal from '@/components/timeline/CreateReservationModal';
+import ReservationDrawer from '@/components/timeline/ReservationDrawer';
 import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
 import { canReserveSlot } from '@/lib/conflictService';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import { format, toZonedTime } from 'date-fns-tz';
-import type { TimelineConfig, Table } from '@/types';
+import type { TimelineConfig, Table, Reservation } from '@/types';
 
 
 export default function TimelinePage() {
@@ -79,11 +79,12 @@ export default function TimelinePage() {
   });
 
   // State for create reservation modal
-  const [modalState, setModalState] = useState<{
+  const [drawerState, setDrawerState] = useState<{
     isOpen: boolean;
     table: Table | null;
     startTime: string | null;
-  }>({ isOpen: false, table: null, startTime: null });
+    reservation: Reservation | null;
+  }>({ isOpen: false, table: null, startTime: null, reservation: null });
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
@@ -159,21 +160,45 @@ export default function TimelinePage() {
     setVisibleDate(event.target.value);
   };
 
-  // Modal handlers
-  const handleOpenCreateModal = (table: Table, startTime: string) => {
-    setModalState({
+  // Drawer handlers
+  const handleOpenCreateDrawer = (table: Table, startTime: string) => {
+    setDrawerState({
       isOpen: true,
       table,
-      startTime
+      startTime,
+      reservation: null
     });
   };
 
-  const handleCloseCreateModal = () => {
-    setModalState({
+  const handleOpenEditDrawer = (reservation: Reservation, table: Table, startTime: string) => {
+    setDrawerState({
+      isOpen: true,
+      table,
+      startTime,
+      reservation
+    });
+  };
+
+  const handleCloseDrawer = () => {
+    setDrawerState({
       isOpen: false,
       table: null,
-      startTime: null
+      startTime: null,
+      reservation: null
     });
+  };
+
+  const handleSaveReservation = (reservation: Reservation) => {
+    // Check if this reservation already exists in the store
+    const existingReservation = reservationsById[reservation.id];
+    
+    if (existingReservation) {
+      // Edit mode - update existing
+      updateReservation(reservation.id, reservation);
+    } else {
+      // Create mode - add new
+      addReservation(reservation);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -501,17 +526,19 @@ export default function TimelinePage() {
         <TimelineLayout 
           config={config} 
           dragState={dragState}
-          onSlotClick={handleOpenCreateModal}
+          onSlotClick={handleOpenCreateDrawer}
         />
       </div>
       
-      {/* Create Reservation Modal */}
-      <CreateReservationModal
-        isOpen={modalState.isOpen}
-        table={modalState.table}
-        startTime={modalState.startTime}
+      {/* Create/Edit Reservation Drawer */}
+      <ReservationDrawer
+        isOpen={drawerState.isOpen}
+        table={drawerState.table}
+        startTime={drawerState.startTime}
         config={config}
-        onClose={handleCloseCreateModal}
+        reservation={drawerState.reservation}
+        onClose={handleCloseDrawer}
+        onSave={handleSaveReservation}
       />
       </div>
     </DndContext>

@@ -108,7 +108,8 @@ export default function CreateReservationModal({
       {
         restaurantConfig,
         tables: allTables,
-        existingReservations: []
+        existingReservations: existingReservations,
+        timezone: config.timezone
       }
     );
 

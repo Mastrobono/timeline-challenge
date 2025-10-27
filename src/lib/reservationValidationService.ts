@@ -27,15 +27,6 @@ export class ReservationValidationService {
   ): ValidationResult {
     const errors: string[] = [];
     
-    console.log('🔍 VALIDATION START:', {
-      reservationId: reservation.id,
-      tableId: reservation.tableId,
-      startTime: reservation.startTime,
-      endTime: reservation.endTime,
-      existingReservationsCount: options.existingReservations?.length || 0,
-      timezone: options.timezone
-    });
-    
     // 1. Validate capacity
     const capacityError = this.validateCapacity(reservation, options.tables);
     if (capacityError) errors.push(capacityError);
@@ -49,18 +40,8 @@ export class ReservationValidationService {
     if (hoursError) errors.push(hoursError);
     
     // 4. Validate conflicts
-    console.log('🔍 CALLING validateConflicts with:', {
-      reservationId: reservation.id,
-      existingReservationsCount: options.existingReservations?.length || 0
-    });
     const conflictError = this.validateConflicts(reservation, options.existingReservations || []);
     if (conflictError) errors.push(conflictError);
-    
-    console.log('🔍 VALIDATION RESULT:', {
-      reservationId: reservation.id,
-      isValid: errors.length === 0,
-      errors
-    });
     
     return {
       isValid: errors.length === 0,
@@ -214,67 +195,27 @@ export class ReservationValidationService {
     reservation: Reservation,
     existingReservations: Reservation[]
   ): string | null {
-    console.log('🔍 validateConflicts called:', {
-      reservationId: reservation.id,
-      tableId: reservation.tableId,
-      existingReservationsCount: existingReservations.length,
-      existingReservations: existingReservations.map(r => ({
-        id: r.id,
-        tableId: r.tableId,
-        startTime: r.startTime,
-        endTime: r.endTime
-      }))
-    });
-    
     if (!reservation.startTime || !reservation.endTime) {
-      console.log('🔍 validateConflicts: No start/end time, returning null');
       return null; // Can't check conflicts without times
     }
     
     const newStart = new Date(reservation.startTime);
     const newEnd = new Date(reservation.endTime);
     
-    // Check for overlaps with existing reservations on the same table
-    const conflictingReservation = existingReservations.find(existing => {
-      if (!existing.startTime || !existing.endTime) return false;
-      if (existing.tableId !== reservation.tableId) return false; // Only check same table
-      if (existing.id === reservation.id) return false; // Don't conflict with self
-      
-      const existingStart = new Date(existing.startTime);
-      const existingEnd = new Date(existing.endTime);
-      
-      // Check if reservations overlap (using precise UTC comparison)
-      const hasOverlap = (newStart < existingEnd && newEnd > existingStart);
-      
-      // Debug log for overlap detection
-      if (hasOverlap) {
-        console.log('🔍 OVERLAP DETECTED:', {
-          newReservation: {
-            id: reservation.id,
-            tableId: reservation.tableId,
-            startTime: reservation.startTime,
-            endTime: reservation.endTime,
-            startUTC: newStart.toISOString(),
-            endUTC: newEnd.toISOString()
-          },
-          existingReservation: {
-            id: existing.id,
-            tableId: existing.tableId,
-            startTime: existing.startTime,
-            endTime: existing.endTime,
-            startUTC: existingStart.toISOString(),
-            endUTC: existingEnd.toISOString()
-          },
-          overlapCheck: {
-            newStartLessThanExistingEnd: newStart < existingEnd,
-            newEndGreaterThanExistingStart: newEnd > existingStart,
-            hasOverlap
-          }
-        });
-      }
-      
-      return hasOverlap;
-    });
+      // Check for overlaps with existing reservations on the same table
+      const conflictingReservation = existingReservations.find(existing => {
+        if (!existing.startTime || !existing.endTime) return false;
+        if (existing.tableId !== reservation.tableId) return false; // Only check same table
+        if (existing.id === reservation.id) return false; // Don't conflict with self
+        
+        const existingStart = new Date(existing.startTime);
+        const existingEnd = new Date(existing.endTime);
+        
+        // Check if reservations overlap (using precise UTC comparison)
+        const hasOverlap = (newStart < existingEnd && newEnd > existingStart);
+        
+        return hasOverlap;
+      });
     
     if (conflictingReservation) {
       return `Reservation conflicts with existing reservation ${conflictingReservation.id} on table ${reservation.tableId}`;
