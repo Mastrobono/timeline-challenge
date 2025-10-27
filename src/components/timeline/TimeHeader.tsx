@@ -14,6 +14,8 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   const { ui } = useTimelineStore();
   const { viewMode, visibleDate } = ui;
   
+  // Log removido para limpiar consola
+  
   // Calculate slots per day and total slots based on view mode
   const slotsPerDay = getSlotsPerDay(config);
   let daysInView = 1;
@@ -66,17 +68,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   // Generate time labels for each day
   for (let dayIndex = 0; dayIndex < daysInView; dayIndex++) {
     for (let hour = startHour; hour < endHour; hour++) {
-      // Create a date for this hour in the selected timezone
-      const dayDate = addDays(new Date(visibleDate), dayIndex);
-      const hourDate = new Date(dayDate);
-      hourDate.setHours(hour, 0, 0, 0);
-      
-      // Convert to the selected timezone for display
-      const zonedHourDate = toZonedTime(hourDate, timezone);
-      const displayHour = zonedHourDate.getHours();
-      const displayMinute = zonedHourDate.getMinutes();
-      
-      // Add hour markers
+      // Add hour markers - use the hour directly without timezone conversion
       const hourSlot = (dayIndex * slotsPerDay) + (hour - startHour) * (60 / slotMinutes);
       const hourPosition = slotToPx(hourSlot, config);
       
@@ -85,9 +77,9 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
           key={`hour-${dayIndex}-${hour}`}
           className="absolute top-6 h-8 flex items-center justify-center text-sm font-medium text-gray-700"
           style={{ left: `${hourPosition}px`, transform: 'translateX(-50%)' }}
-          aria-label={`${displayHour}:${displayMinute.toString().padStart(2, '0')}`}
+          aria-label={`${hour}:00`}
         >
-          {displayHour}:{displayMinute.toString().padStart(2, '0')}
+          {hour}:00
         </div>
       );
       
@@ -97,23 +89,14 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
           const quarterSlot = hourSlot + quarter * (15 / slotMinutes);
           const quarterPosition = slotToPx(quarterSlot, config);
           
-          // Create quarter hour date
-          const quarterDate = new Date(dayDate);
-          quarterDate.setHours(hour, quarter * 15, 0, 0);
-          
-          // Convert to selected timezone
-          const zonedQuarterDate = toZonedTime(quarterDate, timezone);
-          const quarterDisplayHour = zonedQuarterDate.getHours();
-          const quarterDisplayMinute = zonedQuarterDate.getMinutes();
-          
           timeLabels.push(
             <div
               key={`quarter-${dayIndex}-${hour}-${quarter}`}
               className="absolute top-6 h-6 flex items-center justify-center text-xs text-gray-500"
               style={{ left: `${quarterPosition}px`, transform: 'translateX(-50%)' }}
-              aria-label={`${quarterDisplayHour}:${quarterDisplayMinute.toString().padStart(2, '0')}`}
+              aria-label={`${hour}:${(quarter * 15).toString().padStart(2, '0')}`}
             >
-              {quarterDisplayHour}:{quarterDisplayMinute.toString().padStart(2, '0')}
+              {hour}:{(quarter * 15).toString().padStart(2, '0')}
             </div>
           );
         }

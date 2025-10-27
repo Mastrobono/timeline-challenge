@@ -29,7 +29,12 @@ export class ReservationFilterService {
     }
 
     const endTime = new Date(reservation.endTime);
-    const timezone = restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+    const timezone = restaurantConfig?.timezone;
+    
+    if (!timezone) {
+      return true; // No timezone configured, assume valid
+    }
+    
     const zonedEndTime = toZonedTime(endTime, timezone);
     const endHour = zonedEndTime.getHours();
     const restaurantEndHour = restaurantConfig?.operatingHours.endHour || 23;
@@ -52,7 +57,12 @@ export class ReservationFilterService {
     }
 
     const startTime = new Date(reservation.startTime);
-    const timezone = restaurantConfig?.timezone || 'America/Argentina/Buenos_Aires';
+    const timezone = restaurantConfig?.timezone;
+    
+    if (!timezone) {
+      return true; // No timezone configured, assume valid
+    }
+    
     const zonedStartTime = toZonedTime(startTime, timezone);
     const startHour = zonedStartTime.getHours();
     const restaurantStartHour = restaurantConfig?.operatingHours.startHour || fallbackStartHour;

@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from 'react';
+import React, { forwardRef, useMemo, useEffect } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
 import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
@@ -56,16 +56,18 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     const finalReservations = reservations || storeReservations;
     const finalSectors = sectors || storeSectors;
     
-    // Create default config if not provided
+    // Create default config if not provided - ALWAYS use restaurantConfig from store
     const defaultConfig: TimelineConfig = {
       date: visibleDate,
-      startHour: startHour, // Use startHour from store
-      endHour: 23,
-      slotMinutes: 15,
+      startHour: store.restaurantConfig?.operatingHours.startHour || startHour,
+      endHour: store.restaurantConfig?.operatingHours.endHour || 23,
+      slotMinutes: store.restaurantConfig?.slotConfiguration.slotMinutes || 15,
       slotWidth: slotWidth,
-      timezone: ui.timezone, // Use dynamic timezone from UI state
+      timezone: store.restaurantConfig?.timezone || 'UTC',
       viewMode: 'day',
     };
+    
+    // Log removido para limpiar consola
     
     const finalConfig = config || defaultConfig;
     

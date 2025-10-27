@@ -17,6 +17,8 @@ interface ReservationBlockProps {
 export default function ReservationBlock({ reservation, config, dragState }: ReservationBlockProps) {
   const { startTime, endTime, customer, partySize, priority } = reservation;
   
+  // Log removido para limpiar consola
+  
   // DnD setup for main block (move)
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: reservation.id,

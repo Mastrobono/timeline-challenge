@@ -48,9 +48,7 @@ export default function TableRow({ table, reservations, config, dragState, onSlo
     <div 
       ref={setNodeRef}
       data-table-id={table.id}
-      className={`relative border-b border-gray-200 z-40 ${
-        isOver ? 'bg-blue-50' : ''
-      }`}
+      className={`relative border-b border-gray-200 z-40 `}
       style={{ height: `${ROW_HEIGHT}px` }}
     >
       <div 

@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { formatDateForDisplay } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
-import { BulkImportService } from '@/lib/bulkImportService';
-import type { Reservation } from '@/types';
+// Comentado: imports no utilizados después de eliminar botones
+// import { loadStaticSeed } from '@/lib/staticSeeds';
+// import { BulkImportService } from '@/lib/bulkImportService';
+// import type { Reservation } from '@/types';
 
 export default function Toolbar() {
-  const { ui, setViewMode, setTimezone, goToPrevPeriod, goToNextPeriod, goToToday, initializeWithValidation, clearAllReservations } = useTimelineStore();
-  const { visibleDate, viewMode, timezone } = ui;
+  const { ui, restaurantConfig, setViewMode, goToPrevPeriod, goToNextPeriod, goToToday } = useTimelineStore();
+  const { visibleDate, viewMode } = ui;
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
 
-  const formattedDate = formatDateForDisplay(visibleDate, timezone);
+  const formattedDate = formatDateForDisplay(visibleDate, restaurantConfig?.timezone || 'UTC');
 
   const handleViewModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setViewMode(event.target.value as 'day' | '3-day' | 'week' | 'month');
   };
 
-  const handleTimezoneChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setTimezone(event.target.value);
-  };
 
 
+  // Comentado: Funciones de importación y generación de datos
+  // Estas funciones están comentadas porque ahora usamos static seeds automáticamente
+  /*
   const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -61,25 +63,28 @@ export default function Toolbar() {
     }
   };
 
-  // Unified function to generate valid reservations in the current timezone
+  // Unified function to generate valid reservations from static seeds
   const generateValidReservations = async (type: 'small' | 'large' = 'small') => {
-    const response = await fetch('/api/generate-seeds', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        type,
-        timezone: timezone // Pass current timezone from UI state
-      })
+    console.log('🎯 Toolbar Generate Request:', {
+      type,
+      currentRestaurantConfig: restaurantConfig
     });
     
-    if (!response.ok) {
-      throw new Error('Failed to generate seeds');
+    try {
+      // Load static seed data
+      const seedData = await loadStaticSeed(type);
+      
+      console.log('🎯 Toolbar Generate Response:', {
+        restaurantConfig: seedData.restaurantConfig,
+        reservationsCount: seedData.reservations.length
+      });
+      
+      return seedData;
+      
+    } catch (error) {
+      console.error('❌ Error loading static seed:', error);
+      throw new Error(`Failed to load ${type} seed data`);
     }
-    
-    const data = await response.json();
-    return data;
   };
 
   const handleClearState = async (useLarge: boolean = false) => {
@@ -193,13 +198,15 @@ export default function Toolbar() {
       .map(row => row.map(field => `"${field}"`).join(','))
       .join('\n');
   };
+  */
 
   return (
     <div 
       className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200"
       data-testid="timeline-toolbar"
     >
-      {/* Left: Test buttons */}
+      {/* Left: Test buttons - COMENTADO */}
+      {/* 
       <div className="flex items-center space-x-2">
         
         <div className="flex items-center space-x-1">
@@ -253,6 +260,7 @@ export default function Toolbar() {
           </button>
         </div>
       </div>
+      */}
 
       {/* Center: Current date and status */}
       <div className="flex-1 text-center">
@@ -302,18 +310,6 @@ export default function Toolbar() {
           <option value="month">Month</option>
         </select>
 
-        {/* Timezone selector */}
-        <select
-          value={timezone}
-          onChange={handleTimezoneChange}
-          className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          aria-label="Select timezone"
-        >
-          <option value="America/Argentina/Buenos_Aires">Buenos Aires</option>
-          <option value="America/New_York">New York</option>
-          <option value="Europe/London">London</option>
-          <option value="UTC">UTC</option>
-        </select>
       </div>
     </div>
   );

@@ -1,0 +1,1073 @@
+{
+  "restaurantConfig": {
+    "id": "restaurant-1",
+    "name": "Marina Restaurant",
+    "timezone": "America/New_York",
+    "operatingHours": {
+      "startHour": 8,
+      "endHour": 20
+    },
+    "slotConfiguration": {
+      "slotMinutes": 15,
+      "defaultSlotWidth": 60
+    }
+  },
+  "tables": [
+    {
+      "id": "table-1",
+      "sectorId": "sector-1",
+      "name": "Table 1",
+      "capacity": {
+        "min": 2,
+        "max": 4
+      },
+      "sortOrder": 1
+    },
+    {
+      "id": "table-2",
+      "sectorId": "sector-1",
+      "name": "Table 2",
+      "capacity": {
+        "min": 5,
+        "max": 6
+      },
+      "sortOrder": 2
+    },
+    {
+      "id": "table-3",
+      "sectorId": "sector-1",
+      "name": "Table 3",
+      "capacity": {
+        "min": 2,
+        "max": 4
+      },
+      "sortOrder": 3
+    },
+    {
+      "id": "table-4",
+      "sectorId": "sector-1",
+      "name": "Table 4",
+      "capacity": {
+        "min": 3,
+        "max": 5
+      },
+      "sortOrder": 4
+    },
+    {
+      "id": "table-5",
+      "sectorId": "sector-1",
+      "name": "Table 5",
+      "capacity": {
+        "min": 2,
+        "max": 4
+      },
+      "sortOrder": 5
+    },
+    {
+      "id": "table-6",
+      "sectorId": "sector-2",
+      "name": "Table 6",
+      "capacity": {
+        "min": 2,
+        "max": 4
+      },
+      "sortOrder": 1
+    },
+    {
+      "id": "table-7",
+      "sectorId": "sector-2",
+      "name": "Table 7",
+      "capacity": {
+        "min": 4,
+        "max": 6
+      },
+      "sortOrder": 2
+    },
+    {
+      "id": "table-8",
+      "sectorId": "sector-2",
+      "name": "Table 8",
+      "capacity": {
+        "min": 2,
+        "max": 4
+      },
+      "sortOrder": 3
+    },
+    {
+      "id": "table-9",
+      "sectorId": "sector-3",
+      "name": "Table 9",
+      "capacity": {
+        "min": 8,
+        "max": 12
+      },
+      "sortOrder": 1
+    },
+    {
+      "id": "table-10",
+      "sectorId": "sector-3",
+      "name": "Table 10",
+      "capacity": {
+        "min": 6,
+        "max": 10
+      },
+      "sortOrder": 2
+    }
+  ],
+  "sectors": [
+    {
+      "id": "sector-1",
+      "name": "Main Dining",
+      "color": "#3B82F6",
+      "sortOrder": 1
+    },
+    {
+      "id": "sector-2",
+      "name": "Terrace",
+      "color": "#10B981",
+      "sortOrder": 2
+    },
+    {
+      "id": "sector-3",
+      "name": "Private Room",
+      "color": "#F59E0B",
+      "sortOrder": 3
+    }
+  ],
+  "reservations": [
+    {
+      "id": "res-1761548172901-0",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 0",
+        "phone": "+54-9-10422499",
+        "email": "customer0@example.com",
+        "notes": "Special request 0"
+      },
+      "partySize": 10,
+      "startTime": "2025-11-01T12:00:00.000Z",
+      "endTime": "2025-11-01T15:30:00.000Z",
+      "durationMinutes": 210,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-1",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 1",
+        "phone": "+54-9-27307109",
+        "email": "customer1@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-27T19:15:00.000Z",
+      "endTime": "2025-10-27T20:45:00.000Z",
+      "durationMinutes": 90,
+      "status": "PENDING",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-3",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 3",
+        "phone": "+54-9-82479473",
+        "email": "customer3@example.com",
+        "notes": "Special request 3"
+      },
+      "partySize": 9,
+      "startTime": "2025-10-31T14:30:00.000Z",
+      "endTime": "2025-10-31T16:45:00.000Z",
+      "durationMinutes": 135,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-4",
+      "tableId": "table-7",
+      "customer": {
+        "name": "Customer 4",
+        "phone": "+54-9-32982356",
+        "email": "customer4@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-01T21:00:00.000Z",
+      "endTime": "2025-11-01T23:15:00.000Z",
+      "durationMinutes": 135,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-5",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 5",
+        "phone": "+54-9-80531936",
+        "email": "customer5@example.com"
+      },
+      "partySize": 6,
+      "startTime": "2025-10-29T16:15:00.000Z",
+      "endTime": "2025-10-29T18:30:00.000Z",
+      "durationMinutes": 135,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "notes": "Reservation notes 5",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-6",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 6",
+        "phone": "+54-9-21590252",
+        "email": "customer6@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-27T13:00:00.000Z",
+      "endTime": "2025-10-27T16:45:00.000Z",
+      "durationMinutes": 225,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-7",
+      "tableId": "table-7",
+      "customer": {
+        "name": "Customer 7",
+        "phone": "+54-9-53438420",
+        "email": "customer7@example.com"
+      },
+      "partySize": 5,
+      "startTime": "2025-10-31T12:30:00.000Z",
+      "endTime": "2025-10-31T14:15:00.000Z",
+      "durationMinutes": 105,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 7",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-9",
+      "tableId": "table-2",
+      "customer": {
+        "name": "Customer 9",
+        "phone": "+54-9-40254737",
+        "email": "customer9@example.com"
+      },
+      "partySize": 6,
+      "startTime": "2025-11-01T21:45:00.000Z",
+      "endTime": "2025-11-02T00:00:00.000Z",
+      "durationMinutes": 135,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-10",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 10",
+        "phone": "+54-9-11128440",
+        "email": "customer10@example.com"
+      },
+      "partySize": 10,
+      "startTime": "2025-10-31T19:15:00.000Z",
+      "endTime": "2025-10-31T20:45:00.000Z",
+      "durationMinutes": 90,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-12",
+      "tableId": "table-2",
+      "customer": {
+        "name": "Customer 12",
+        "phone": "+54-9-72661073",
+        "email": "customer12@example.com",
+        "notes": "Special request 12"
+      },
+      "partySize": 6,
+      "startTime": "2025-10-27T16:00:00.000Z",
+      "endTime": "2025-10-27T19:15:00.000Z",
+      "durationMinutes": 195,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-13",
+      "tableId": "table-5",
+      "customer": {
+        "name": "Customer 13",
+        "phone": "+54-9-74362517",
+        "email": "customer13@example.com",
+        "notes": "Special request 13"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-29T16:00:00.000Z",
+      "endTime": "2025-10-29T18:45:00.000Z",
+      "durationMinutes": 165,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-14",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 14",
+        "phone": "+54-9-96406023",
+        "email": "customer14@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-01T20:45:00.000Z",
+      "endTime": "2025-11-01T22:45:00.000Z",
+      "durationMinutes": 120,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172901-15",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 15",
+        "phone": "+54-9-41557540",
+        "email": "customer15@example.com"
+      },
+      "partySize": 3,
+      "startTime": "2025-10-27T21:15:00.000Z",
+      "endTime": "2025-10-27T22:30:00.000Z",
+      "durationMinutes": 75,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "notes": "Reservation notes 15",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.901Z",
+      "updatedAt": "2025-10-27T06:56:12.901Z"
+    },
+    {
+      "id": "res-1761548172902-16",
+      "tableId": "table-6",
+      "customer": {
+        "name": "Customer 16",
+        "phone": "+54-9-31939921",
+        "email": "customer16@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-31T12:30:00.000Z",
+      "endTime": "2025-10-31T16:15:00.000Z",
+      "durationMinutes": 225,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 16",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-17",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 17",
+        "phone": "+54-9-31319847",
+        "email": "customer17@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-11-02T17:30:00.000Z",
+      "endTime": "2025-11-02T20:15:00.000Z",
+      "durationMinutes": 165,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-18",
+      "tableId": "table-4",
+      "customer": {
+        "name": "Customer 18",
+        "phone": "+54-9-71220845",
+        "email": "customer18@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-01T19:00:00.000Z",
+      "endTime": "2025-11-01T21:00:00.000Z",
+      "durationMinutes": 120,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-19",
+      "tableId": "table-7",
+      "customer": {
+        "name": "Customer 19",
+        "phone": "+54-9-70675106",
+        "email": "customer19@example.com"
+      },
+      "partySize": 6,
+      "startTime": "2025-10-27T17:15:00.000Z",
+      "endTime": "2025-10-27T18:15:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-20",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 20",
+        "phone": "+54-9-61653989",
+        "email": "customer20@example.com"
+      },
+      "partySize": 10,
+      "startTime": "2025-10-28T14:30:00.000Z",
+      "endTime": "2025-10-28T15:45:00.000Z",
+      "durationMinutes": 75,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-21",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 21",
+        "phone": "+54-9-41041629",
+        "email": "customer21@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-27T12:15:00.000Z",
+      "endTime": "2025-10-27T16:00:00.000Z",
+      "durationMinutes": 225,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-22",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 22",
+        "phone": "+54-9-61515792",
+        "email": "customer22@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-29T15:15:00.000Z",
+      "endTime": "2025-10-29T16:45:00.000Z",
+      "durationMinutes": 90,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 22",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-23",
+      "tableId": "table-5",
+      "customer": {
+        "name": "Customer 23",
+        "phone": "+54-9-49776629",
+        "email": "customer23@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-27T13:30:00.000Z",
+      "endTime": "2025-10-27T17:00:00.000Z",
+      "durationMinutes": 210,
+      "status": "PENDING",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-24",
+      "tableId": "table-6",
+      "customer": {
+        "name": "Customer 24",
+        "phone": "+54-9-22708595",
+        "email": "customer24@example.com",
+        "notes": "Special request 24"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-30T21:15:00.000Z",
+      "endTime": "2025-10-30T22:15:00.000Z",
+      "durationMinutes": 60,
+      "status": "PENDING",
+      "priority": "VIP",
+      "notes": "Reservation notes 24",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-25",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 25",
+        "phone": "+54-9-24083050",
+        "email": "customer25@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-30T15:15:00.000Z",
+      "endTime": "2025-10-30T16:15:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-26",
+      "tableId": "table-5",
+      "customer": {
+        "name": "Customer 26",
+        "phone": "+54-9-30138413",
+        "email": "customer26@example.com"
+      },
+      "partySize": 3,
+      "startTime": "2025-11-01T15:30:00.000Z",
+      "endTime": "2025-11-01T17:15:00.000Z",
+      "durationMinutes": 105,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-28",
+      "tableId": "table-6",
+      "customer": {
+        "name": "Customer 28",
+        "phone": "+54-9-32984680",
+        "email": "customer28@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-02T22:30:00.000Z",
+      "endTime": "2025-11-02T23:30:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-29",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 29",
+        "phone": "+54-9-61811130",
+        "email": "customer29@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-02T17:00:00.000Z",
+      "endTime": "2025-11-02T20:00:00.000Z",
+      "durationMinutes": 180,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-30",
+      "tableId": "table-2",
+      "customer": {
+        "name": "Customer 30",
+        "phone": "+54-9-22938081",
+        "email": "customer30@example.com"
+      },
+      "partySize": 5,
+      "startTime": "2025-10-31T16:45:00.000Z",
+      "endTime": "2025-10-31T20:15:00.000Z",
+      "durationMinutes": 210,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-31",
+      "tableId": "table-9",
+      "customer": {
+        "name": "Customer 31",
+        "phone": "+54-9-19742595",
+        "email": "customer31@example.com",
+        "notes": "Special request 31"
+      },
+      "partySize": 9,
+      "startTime": "2025-10-31T15:30:00.000Z",
+      "endTime": "2025-10-31T19:30:00.000Z",
+      "durationMinutes": 240,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-33",
+      "tableId": "table-4",
+      "customer": {
+        "name": "Customer 33",
+        "phone": "+54-9-69998271",
+        "email": "customer33@example.com",
+        "notes": "Special request 33"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-02T16:15:00.000Z",
+      "endTime": "2025-11-02T19:45:00.000Z",
+      "durationMinutes": 210,
+      "status": "PENDING",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 33",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-34",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 34",
+        "phone": "+54-9-88084324",
+        "email": "customer34@example.com"
+      },
+      "partySize": 6,
+      "startTime": "2025-11-01T18:00:00.000Z",
+      "endTime": "2025-11-01T19:15:00.000Z",
+      "durationMinutes": 75,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-35",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 35",
+        "phone": "+54-9-57458775",
+        "email": "customer35@example.com"
+      },
+      "partySize": 3,
+      "startTime": "2025-10-27T18:00:00.000Z",
+      "endTime": "2025-10-27T21:00:00.000Z",
+      "durationMinutes": 180,
+      "status": "PENDING",
+      "priority": "LARGE_GROUP",
+      "notes": "Reservation notes 35",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-36",
+      "tableId": "table-9",
+      "customer": {
+        "name": "Customer 36",
+        "phone": "+54-9-73747793",
+        "email": "customer36@example.com"
+      },
+      "partySize": 10,
+      "startTime": "2025-10-30T20:00:00.000Z",
+      "endTime": "2025-10-30T23:45:00.000Z",
+      "durationMinutes": 225,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-37",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 37",
+        "phone": "+54-9-51539808",
+        "email": "customer37@example.com",
+        "notes": "Special request 37"
+      },
+      "partySize": 6,
+      "startTime": "2025-10-27T22:30:00.000Z",
+      "endTime": "2025-10-28T00:00:00.000Z",
+      "durationMinutes": 90,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-38",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 38",
+        "phone": "+54-9-95045214",
+        "email": "customer38@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-27T16:45:00.000Z",
+      "endTime": "2025-10-27T20:00:00.000Z",
+      "durationMinutes": 195,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-39",
+      "tableId": "table-7",
+      "customer": {
+        "name": "Customer 39",
+        "phone": "+54-9-12146649",
+        "email": "customer39@example.com"
+      },
+      "partySize": 5,
+      "startTime": "2025-10-29T15:00:00.000Z",
+      "endTime": "2025-10-29T17:30:00.000Z",
+      "durationMinutes": 150,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "notes": "Reservation notes 39",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-42",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 42",
+        "phone": "+54-9-90001469",
+        "email": "customer42@example.com"
+      },
+      "partySize": 6,
+      "startTime": "2025-10-29T14:00:00.000Z",
+      "endTime": "2025-10-29T17:15:00.000Z",
+      "durationMinutes": 195,
+      "status": "PENDING",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-43",
+      "tableId": "table-4",
+      "customer": {
+        "name": "Customer 43",
+        "phone": "+54-9-72105082",
+        "email": "customer43@example.com",
+        "notes": "Special request 43"
+      },
+      "partySize": 5,
+      "startTime": "2025-10-28T16:45:00.000Z",
+      "endTime": "2025-10-28T20:30:00.000Z",
+      "durationMinutes": 225,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-44",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 44",
+        "phone": "+54-9-18602871",
+        "email": "customer44@example.com",
+        "notes": "Special request 44"
+      },
+      "partySize": 7,
+      "startTime": "2025-10-30T19:15:00.000Z",
+      "endTime": "2025-10-30T21:00:00.000Z",
+      "durationMinutes": 105,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-45",
+      "tableId": "table-5",
+      "customer": {
+        "name": "Customer 45",
+        "phone": "+54-9-74089113",
+        "email": "customer45@example.com",
+        "notes": "Special request 45"
+      },
+      "partySize": 3,
+      "startTime": "2025-10-31T15:45:00.000Z",
+      "endTime": "2025-10-31T19:00:00.000Z",
+      "durationMinutes": 195,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-46",
+      "tableId": "table-3",
+      "customer": {
+        "name": "Customer 46",
+        "phone": "+54-9-70778630",
+        "email": "customer46@example.com",
+        "notes": "Special request 46"
+      },
+      "partySize": 2,
+      "startTime": "2025-11-02T15:30:00.000Z",
+      "endTime": "2025-11-02T16:30:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-48",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 48",
+        "phone": "+54-9-22456408",
+        "email": "customer48@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-28T14:30:00.000Z",
+      "endTime": "2025-10-28T16:45:00.000Z",
+      "durationMinutes": 135,
+      "status": "CONFIRMED",
+      "priority": "VIP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-49",
+      "tableId": "table-9",
+      "customer": {
+        "name": "Customer 49",
+        "phone": "+54-9-23025059",
+        "email": "customer49@example.com",
+        "notes": "Special request 49"
+      },
+      "partySize": 10,
+      "startTime": "2025-10-29T20:30:00.000Z",
+      "endTime": "2025-10-29T21:30:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-50",
+      "tableId": "table-8",
+      "customer": {
+        "name": "Customer 50",
+        "phone": "+54-9-69034230",
+        "email": "customer50@example.com"
+      },
+      "partySize": 3,
+      "startTime": "2025-10-28T20:45:00.000Z",
+      "endTime": "2025-10-28T22:00:00.000Z",
+      "durationMinutes": 75,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 50",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-51",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 51",
+        "phone": "+54-9-19711629",
+        "email": "customer51@example.com"
+      },
+      "partySize": 9,
+      "startTime": "2025-10-30T13:45:00.000Z",
+      "endTime": "2025-10-30T17:00:00.000Z",
+      "durationMinutes": 195,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-53",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 53",
+        "phone": "+54-9-57917925",
+        "email": "customer53@example.com"
+      },
+      "partySize": 10,
+      "startTime": "2025-11-01T23:00:00.000Z",
+      "endTime": "2025-11-02T00:00:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "notes": "Reservation notes 53",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-54",
+      "tableId": "table-10",
+      "customer": {
+        "name": "Customer 54",
+        "phone": "+54-9-86823510",
+        "email": "customer54@example.com",
+        "notes": "Special request 54"
+      },
+      "partySize": 8,
+      "startTime": "2025-10-27T15:00:00.000Z",
+      "endTime": "2025-10-27T18:15:00.000Z",
+      "durationMinutes": 195,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "notes": "Reservation notes 54",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-55",
+      "tableId": "table-7",
+      "customer": {
+        "name": "Customer 55",
+        "phone": "+54-9-96399269",
+        "email": "customer55@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-10-27T16:45:00.000Z",
+      "endTime": "2025-10-27T17:45:00.000Z",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172902-56",
+      "tableId": "table-5",
+      "customer": {
+        "name": "Customer 56",
+        "phone": "+54-9-86371910",
+        "email": "customer56@example.com"
+      },
+      "partySize": 2,
+      "startTime": "2025-10-28T20:00:00.000Z",
+      "endTime": "2025-10-28T21:30:00.000Z",
+      "durationMinutes": 90,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.902Z",
+      "updatedAt": "2025-10-27T06:56:12.902Z"
+    },
+    {
+      "id": "res-1761548172903-57",
+      "tableId": "table-2",
+      "customer": {
+        "name": "Customer 57",
+        "phone": "+54-9-93783240",
+        "email": "customer57@example.com"
+      },
+      "partySize": 5,
+      "startTime": "2025-10-28T13:45:00.000Z",
+      "endTime": "2025-10-28T17:15:00.000Z",
+      "durationMinutes": 210,
+      "status": "CONFIRMED",
+      "priority": "LARGE_GROUP",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.903Z",
+      "updatedAt": "2025-10-27T06:56:12.903Z"
+    },
+    {
+      "id": "res-1761548172903-58",
+      "tableId": "table-4",
+      "customer": {
+        "name": "Customer 58",
+        "phone": "+54-9-18673966",
+        "email": "customer58@example.com"
+      },
+      "partySize": 4,
+      "startTime": "2025-11-01T12:45:00.000Z",
+      "endTime": "2025-11-01T14:15:00.000Z",
+      "durationMinutes": 90,
+      "status": "CONFIRMED",
+      "priority": "STANDARD",
+      "source": "seed",
+      "createdAt": "2025-10-27T06:56:12.903Z",
+      "updatedAt": "2025-10-27T06:56:12.903Z"
+    }
+  ],
+  "metadata": {
+    "generatedAt": "2025-10-27T06:56:12.903Z",
+    "timezone": "America/New_York",
+    "type": "large",
+    "reservationsCount": 50,
+    "tablesCount": 10,
+    "sectorsCount": 3
+  }
+}

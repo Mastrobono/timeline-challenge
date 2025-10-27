@@ -1,5 +1,5 @@
 import { addDays, addMinutes } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import type { Table, Sector, Reservation, RestaurantConfig } from '@/types';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 
@@ -97,6 +97,18 @@ export function generateReservationsInTimezone(
     
     // Calculate end slot and mark slots as occupied
     const endSlotIndex = startSlotIndex + Math.ceil(durationMinutesSimple / slotMinutes);
+    
+    // Ensure endSlotIndex is valid and after startSlotIndex
+    if (endSlotIndex <= startSlotIndex) {
+      console.log('⚠️ Invalid reservation duration, skipping:', {
+        startSlotIndex,
+        endSlotIndex,
+        durationMinutesSimple,
+        slotMinutes
+      });
+      continue;
+    }
+    
     for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
       occupiedSlots[tableDayKey].add(slot);
     }
@@ -108,6 +120,24 @@ export function generateReservationsInTimezone(
     // Convert FROM the target timezone TO UTC
     const utcStartTime = fromZonedTime(reservationDateTime, timezone);
     const utcEndTime = addMinutes(utcStartTime, durationMinutesSimple);
+    
+    // Validate that end time is after start time
+    if (utcEndTime <= utcStartTime) {
+      console.log('⚠️ Invalid reservation times, skipping:', {
+        utcStartTime: utcStartTime.toISOString(),
+        utcEndTime: utcEndTime.toISOString(),
+        durationMinutesSimple
+      });
+      continue;
+    }
+    
+    console.log('🕐 Reservation Time Generation:', {
+      timezone,
+      localTime: `${startHourSimple}:${startMinuteSimple.toString().padStart(2, '0')}`,
+      utcStartTime: utcStartTime.toISOString(),
+      utcEndTime: utcEndTime.toISOString(),
+      zonedBack: toZonedTime(utcStartTime, timezone).getHours() + ':' + toZonedTime(utcStartTime, timezone).getMinutes().toString().padStart(2, '0')
+    });
     
     const reservation: Reservation = {
       id: `res-${Date.now()}-${i}`,
@@ -173,6 +203,24 @@ export function generateReservationsInTimezone(
         
         const utcStartTime = fromZonedTime(reservationDateTime, timezone);
         const utcEndTime = addMinutes(utcStartTime, durationMinutesSimple);
+        
+        // Validate that end time is after start time
+        if (utcEndTime <= utcStartTime) {
+          console.log('⚠️ Invalid additional reservation times, skipping:', {
+            utcStartTime: utcStartTime.toISOString(),
+            utcEndTime: utcEndTime.toISOString(),
+            durationMinutesSimple
+          });
+          continue;
+        }
+        
+        console.log('🕐 Additional Reservation Time Generation:', {
+          timezone,
+          localTime: `${startHourSimple}:${startMinuteSimple.toString().padStart(2, '0')}`,
+          utcStartTime: utcStartTime.toISOString(),
+          utcEndTime: utcEndTime.toISOString(),
+          zonedBack: toZonedTime(utcStartTime, timezone).getHours() + ':' + toZonedTime(utcStartTime, timezone).getMinutes().toString().padStart(2, '0')
+        });
         
         const reservation: Reservation = {
           id: `res-${Date.now()}-${i + generateCount}`,
@@ -267,16 +315,50 @@ export function generateTablesAndSectors() {
 }
 
 /**
- * Generate restaurant config with the specified timezone
+ * Generate restaurant config with random hours and restaurant name
  */
 export function generateRestaurantConfig(timezone: string): RestaurantConfig {
-  return {
-    id: 'restaurant-1',
-    name: 'Sample Restaurant',
-    timezone,
+  const restaurantNames = [
+    'Bistro Central',
+    'Café del Sol',
+    'La Terraza',
+    'El Jardín',
+    'Marina Restaurant',
+    'Downtown Bistro',
+    'Garden View',
+    'Sunset Café',
+    'Urban Kitchen',
+    'Riverside Dining'
+  ];
+  
+  const timezones = [
+    'America/Argentina/Buenos_Aires',
+    'America/New_York',
+    'Europe/London',
+    'Europe/Paris',
+    'Asia/Tokyo',
+    'Australia/Sydney',
+    'America/Los_Angeles',
+    'America/Chicago'
+  ];
+  
+  // Generate random operating hours (start between 6-12, end between 18-24)
+  const startHour = Math.floor(Math.random() * 7) + 6; // 6-12
+  const endHour = Math.floor(Math.random() * 7) + 18; // 18-24
+  
+  // Ensure end hour is after start hour
+  const finalEndHour = endHour > startHour ? endHour : startHour + 8;
+  
+  // Always generate random timezone for variety
+  const selectedTimezone = timezones[Math.floor(Math.random() * timezones.length)];
+  
+  const config = {
+    id: `restaurant-${Date.now()}`,
+    name: restaurantNames[Math.floor(Math.random() * restaurantNames.length)],
+    timezone: selectedTimezone,
     operatingHours: {
-      startHour: 7,
-      endHour: 23
+      startHour,
+      endHour: finalEndHour
     },
     slotConfiguration: {
       slotMinutes: 15,
@@ -285,4 +367,13 @@ export function generateRestaurantConfig(timezone: string): RestaurantConfig {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+  
+  console.log('🍽️ Generated Restaurant Config:', {
+    name: config.name,
+    timezone: config.timezone,
+    hours: `${config.operatingHours.startHour}:00 - ${config.operatingHours.endHour}:00`,
+    inputTimezone: timezone
+  });
+  
+  return config;
 }

@@ -20,7 +20,6 @@ export interface TimelineState {
     visibleDate: string;
     viewMode: 'day' | '3-day' | 'week' | 'month';
     startHour: number;
-    timezone: string;
   };
   _hasHydrated: boolean;
 }
@@ -36,7 +35,6 @@ export interface TimelineActions {
   setRestaurantConfig: (config: RestaurantConfig) => void;
   setSlotWidth: (px: number) => void;
   setVisibleDate: (date: string) => void;
-  setTimezone: (timezone: string) => void;
   toggleSectorCollapse: (sectorId: UUID) => void;
   setViewMode: (mode: 'day' | '3-day' | 'week' | 'month') => void;
   goToNextPeriod: () => void;
@@ -118,7 +116,7 @@ export const getValidReservationsForSector = (
       endHour: 23,
       slotMinutes: 15,
       slotWidth: 60,
-      timezone: state.ui.timezone,
+      timezone: state.restaurantConfig?.timezone || 'UTC',
       viewMode: 'day'
     },
     restaurantConfig
@@ -141,7 +139,6 @@ const useTimelineStore = create<TimelineStore>()(
         visibleDate: '2025-10-24',
         viewMode: 'day',
         startHour: 7,
-        timezone: 'America/Argentina/Buenos_Aires',
       },
       _hasHydrated: false,
 
@@ -156,7 +153,7 @@ const useTimelineStore = create<TimelineStore>()(
           // Validate reservation times before adding
           if (reservation.endTime) {
             const endTime = new Date(reservation.endTime);
-            const timezone = state.ui.timezone;
+            const timezone = state.restaurantConfig?.timezone || 'UTC';
             const zonedEndTime = toZonedTime(endTime, timezone);
             const endHour = zonedEndTime.getHours();
             const endMinutes = zonedEndTime.getMinutes();
@@ -206,7 +203,7 @@ const useTimelineStore = create<TimelineStore>()(
           // Validate reservation times before updating
           if (updatedReservation.endTime) {
             const endTime = new Date(updatedReservation.endTime);
-            const timezone = state.ui.timezone;
+            const timezone = state.restaurantConfig?.timezone || 'UTC';
             const zonedEndTime = toZonedTime(endTime, timezone);
             const endHour = zonedEndTime.getHours();
             const endMinutes = zonedEndTime.getMinutes();
@@ -371,15 +368,6 @@ const useTimelineStore = create<TimelineStore>()(
         }));
       },
 
-      setTimezone: (timezone: string) => {
-        set((state) => ({
-          ...state,
-          ui: {
-            ...state.ui,
-            timezone: timezone,
-          },
-        }));
-      },
 
       toggleSectorCollapse: (sectorId: UUID) => {
         set((state) => ({
@@ -473,12 +461,13 @@ const useTimelineStore = create<TimelineStore>()(
           ...state,
           ui: {
             ...state.ui,
-            visibleDate: getTodayInTimezone(state.ui.timezone),
+            visibleDate: getTodayInTimezone(state.restaurantConfig?.timezone || 'UTC'),
           },
         }));
       },
 
       setRestaurantConfig: (config: RestaurantConfig) => {
+        console.log('🏪 Store Setting Restaurant Config:', config);
         set((state) => ({
           ...state,
           restaurantConfig: config,
@@ -497,6 +486,13 @@ const useTimelineStore = create<TimelineStore>()(
         sectors: Sector[];
         restaurantConfig: RestaurantConfig;
       }) => {
+        console.log('🔄 Store Initialize With Validation:', {
+          restaurantConfig: data.restaurantConfig,
+          reservationsCount: data.reservations.length,
+          tablesCount: data.tables.length,
+          sectorsCount: data.sectors.length
+        });
+        
         set((state) => {
           const { reservations, tables, sectors, restaurantConfig } = data;
           

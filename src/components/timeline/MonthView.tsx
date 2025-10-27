@@ -47,7 +47,7 @@ export default function MonthView() {
         endHour: restaurantConfig?.operatingHours.endHour || 23,
         slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
         slotWidth: 30,
-        timezone: ui.timezone,
+        timezone: restaurantConfig?.timezone || 'UTC',
         viewMode: 'month',
       },
       restaurantConfig

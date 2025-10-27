@@ -32,6 +32,8 @@ export function slotToIso(slotIndex: number, config: TimelineConfig): string {
   // This treats the localDate as if it were in the target timezone
   const utcDate = fromZonedTime(localDate, config.timezone);
   
+  // Log removido para limpiar consola
+  
   return utcDate.toISOString();
 }
 
@@ -47,12 +49,15 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   const zonedConfigDate = toZonedTime(configDate, config.timezone);
   
   // Calculate minutes from midnight in the restaurant timezone
-  const minutesFromMidnight = differenceInMinutes(zonedDate, zonedConfigDate);
+  // Use direct calculation instead of differenceInMinutes to avoid DST issues
+  const minutesFromMidnight = (zonedDate.getHours() * 60) + zonedDate.getMinutes();
   
   // Convert to slot index relative to startHour
   // slotIndex should be relative to startHour, not from midnight
   const minutesFromStartHour = minutesFromMidnight - (config.startHour * 60);
   const slotIndex = Math.floor(minutesFromStartHour / config.slotMinutes);
+  
+  // Log removido para limpiar consola
   
   return Math.max(0, slotIndex); // Ensure non-negative slot index
 }
@@ -73,9 +78,10 @@ export function slotToPx(slotIndex: number, config: TimelineConfig): number {
 
 /**
  * Convert pixel position to slot index
+ * For resize operations, we need precise calculation
  */
 export function pxToSlot(x: number, config: TimelineConfig): number {
-  return Math.floor(x / config.slotWidth);
+  return Math.round(x / config.slotWidth);
 }
 
 /**

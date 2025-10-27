@@ -5,6 +5,7 @@ import { canReserveSlot } from '@/lib/conflictService';
 import { slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
 import { addMinutes } from 'date-fns';
+import { format, toZonedTime } from 'date-fns-tz';
 
 interface CreateReservationModalProps {
   isOpen: boolean;
@@ -188,7 +189,7 @@ export default function CreateReservationModal({
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="text-sm text-gray-600">
                 <div><strong>Table:</strong> {table.name}</div>
-                <div><strong>Start Time:</strong> {new Date(startTime).toLocaleString()}</div>
+                <div><strong>Start Time:</strong> {format(toZonedTime(new Date(startTime), config.timezone), 'HH:mm')}</div>
                 <div><strong>Capacity:</strong> {table.capacity.min}-{table.capacity.max} people</div>
               </div>
             </div>
