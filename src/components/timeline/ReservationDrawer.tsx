@@ -3,11 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogPanel, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { XMarkIcon, ChevronUpDownIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { ReservationValidationService } from '@/lib/reservationValidationService';
-import { slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import { format, toZonedTime } from 'date-fns-tz';
 import type { Table, Reservation, ReservationStatus, Priority, TimelineConfig } from '@/types';
-import useTimelineStore from '@/store/useTimelineStore';
 import { STATUS_COLORS } from '@/lib/constants';
 
 interface ReservationDrawerProps {
@@ -17,7 +14,7 @@ interface ReservationDrawerProps {
   config: TimelineConfig;
   reservation?: Reservation | null; // Optional existing reservation for edit mode
   onClose: () => void;
-  onSave: (reservation: Reservation) => void;
+  onSave: (reservation: Reservation) => boolean;
 }
 
 const statusOptions = [
@@ -45,7 +42,6 @@ export default function ReservationDrawer({
   onClose,
   onSave
 }: ReservationDrawerProps) {
-  const { reservationsById, tablesById, restaurantConfig } = useTimelineStore();
   
   const isEditMode = !!reservation;
   
@@ -103,7 +99,19 @@ export default function ReservationDrawer({
     e.preventDefault();
     
     if (!table || !startTime) {
-      alert('Missing table or start time information');
+      return;
+    }
+
+    // Basic validation for required fields
+    if (!formData.customerName.trim()) {
+      return;
+    }
+
+    if (!formData.customerPhone.trim()) {
+      return;
+    }
+
+    if (formData.partySize < table.capacity.min || formData.partySize > table.capacity.max) {
       return;
     }
 
@@ -137,47 +145,14 @@ export default function ReservationDrawer({
       updatedAt: new Date().toISOString()
     };
 
-    // Get all existing reservations for validation
-    const existingReservations = Object.values(reservationsById);
-    const allTables = Object.values(tablesById);
-
-    // Validate reservation using the validation service
-    const validation = ReservationValidationService.validateReservation(
-      newReservation,
-      {
-        restaurantConfig,
-        tables: allTables,
-        existingReservations: existingReservations.filter(r => r.id !== id),
-        timezone: config.timezone
-      }
-    );
-
-    if (!validation.isValid) {
-      alert(`Validation failed: ${validation.errors.join(', ')}`);
-      return;
-    }
-
-    // Basic validation for required fields
-    if (!formData.customerName.trim()) {
-      alert('Customer name is required.');
-      return;
-    }
-
-    if (!formData.customerPhone.trim()) {
-      alert('Customer phone is required.');
-      return;
-    }
-
-    if (formData.partySize < table.capacity.min || formData.partySize > table.capacity.max) {
-      alert(`Party size must be between ${table.capacity.min} and ${table.capacity.max} people.`);
-      return;
-    }
+    // Call the onSave callback (validation will be handled in parent)
+    // We pass a flag to check if save was successful
+    const success = onSave(newReservation);
     
-    // Call the onSave callback
-    onSave(newReservation);
-    
-    // Close the drawer
-    onClose();
+    // Only close if save was successful
+    if (success) {
+      onClose();
+    }
   };
 
   // Handle input changes

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent, closestCenter, rectIntersection } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent, rectIntersection } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import ReservationDrawer from '@/components/timeline/ReservationDrawer';
+import Notification from '@/components/ui/Notification';
 import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
-import { canReserveSlot } from '@/lib/conflictService';
+import { useNotification } from '@/hooks/useNotification';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import { format, toZonedTime } from 'date-fns-tz';
@@ -28,6 +29,9 @@ export default function TimelinePage() {
   // Hook para auto-inicialización en modo desarrollo
   const { isInitialized, isLoading: isInitializing, error: initError } = useAutoInitialize();
   
+  // Notification hook
+  const { notification, showNotification, hideNotification } = useNotification();
+  
   // Helper function to format time in restaurant timezone
   const formatTimeInTimezone = (isoString: string, timezone: string) => {
     return format(toZonedTime(new Date(isoString), timezone), 'HH:mm');
@@ -37,7 +41,7 @@ export default function TimelinePage() {
   const [rejectedCount, setRejectedCount] = useState(0);
   
   // State for filtered reservations from TimelineLayout
-  const [filteredReservations, setFilteredReservations] = useState<any[]>([]);
+  const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
 
   // Create timeline config - this will re-create when restaurantConfig changes
   const config: TimelineConfig = useMemo(() => ({
@@ -188,17 +192,53 @@ export default function TimelinePage() {
     });
   };
 
-  const handleSaveReservation = (reservation: Reservation) => {
+  const handleSaveReservation = (reservation: Reservation): boolean => {
     // Check if this reservation already exists in the store
     const existingReservation = reservationsById[reservation.id];
+    
+    // Validate before saving
+    const allTables = Object.values(tablesById);
+    const existingReservations = Object.values(reservationsById);
+    
+    const validation = ReservationValidationService.validateReservation(
+      reservation,
+      {
+        restaurantConfig,
+        tables: allTables,
+        existingReservations: existingReservations.filter(r => r.id !== reservation.id),
+        timezone: config.timezone
+      }
+    );
+
+    if (!validation.isValid) {
+      // Show error notification
+      showNotification(
+        'error',
+        'Validation failed',
+        validation.errors[0] || 'Cannot create/update reservation due to conflicts.'
+      );
+      return false;
+    }
     
     if (existingReservation) {
       // Edit mode - update existing
       updateReservation(reservation.id, reservation);
+      showNotification(
+        'success',
+        'Reservation updated',
+        `Reservation for ${reservation.customer.name} has been updated successfully.`
+      );
     } else {
       // Create mode - add new
       addReservation(reservation);
+      showNotification(
+        'success',
+        'Reservation created',
+        `New reservation for ${reservation.customer.name} has been created successfully.`
+      );
     }
+    
+    return true;
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -292,19 +332,31 @@ export default function TimelinePage() {
           originalEndSlot,
           errors: validation.errors
         });
+        
+        // Show error notification
+        showNotification(
+          'error',
+          'Conflict detected',
+          `Cannot resize reservation. ${validation.errors[0]}`
+        );
         return;
       }
       
       // Calculate new start time
       const newStartTime = slotToIso(newStartSlot, config);
       
-      // Log removido para limpiar consola
-      
       // Update the reservation
       updateReservation(reservation.id, {
         startTime: newStartTime,
         endTime: reservation.endTime, // Keep original end time
       });
+      
+      // Show success notification
+      showNotification(
+        'success',
+        'Reservation updated',
+        `Reservation successfully resized.`
+      );
       
       
     } else if (activeId.startsWith('resize-right-')) {
@@ -359,6 +411,13 @@ export default function TimelinePage() {
           newEndSlot,
           errors: validation.errors
         });
+        
+        // Show error notification
+        showNotification(
+          'error',
+          'Conflict detected',
+          `Cannot resize reservation. ${validation.errors[0]}`
+        );
         return;
       }
       
@@ -370,6 +429,13 @@ export default function TimelinePage() {
         startTime: reservation.startTime, // Keep original start time
         endTime: newEndTime,
       });
+      
+      // Show success notification
+      showNotification(
+        'success',
+        'Reservation updated',
+        `Reservation successfully resized.`
+      );
       
       
     } else {
@@ -432,6 +498,13 @@ export default function TimelinePage() {
           newEndSlot,
           errors: validation.errors
         });
+        
+        // Show error notification
+        showNotification(
+          'error',
+          'Conflict detected',
+          `Cannot move reservation. ${validation.errors[0]}`
+        );
         return;
       }
       
@@ -445,6 +518,13 @@ export default function TimelinePage() {
         startTime: newStartTime,
         endTime: newEndTime,
       });
+      
+      // Show success notification
+      showNotification(
+        'success',
+        'Reservation moved',
+        `Reservation successfully moved.`
+      );
       
     }
   };
@@ -540,6 +620,14 @@ export default function TimelinePage() {
         onClose={handleCloseDrawer}
         onSave={handleSaveReservation}
       />
+      
+      {/* Notification */}
+      {notification && (
+        <Notification
+          notification={notification}
+          onClose={hideNotification}
+        />
+      )}
       </div>
     </DndContext>
   );
