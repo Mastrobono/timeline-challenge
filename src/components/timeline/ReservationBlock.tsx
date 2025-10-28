@@ -284,7 +284,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
       {/* Styled Tooltip */}
       {showTooltip && (
         <div 
-          className={`absolute z-20 p-3 bg-gray-800 text-white rounded-md shadow-lg min-w-[200px] left-1/2 transform -translate-x-1/2 transition-opacity duration-200 ${
+          className={`absolute z-30 p-3 bg-gray-800 text-white rounded-md shadow-lg min-w-[200px] left-1/2 transform -translate-x-1/2 transition-opacity duration-200 ${
             tooltipPosition === 'top' 
               ? 'bottom-full mb-2' 
               : 'top-full mt-2'

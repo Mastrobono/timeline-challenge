@@ -205,7 +205,7 @@ export default function Toolbar() {
       className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200"
       data-testid="timeline-toolbar"
     >
-      {/* Left: Test buttons - COMENTADO */}
+      {/* Left: Test buttons */}
       {/* 
       <div className="flex items-center space-x-2">
         

@@ -267,10 +267,11 @@ export default function ReservationDrawer({
               transition
               className="pointer-events-auto w-screen max-w-md transform transition duration-500 ease-in-out data-[closed]:translate-x-full sm:duration-700"
             >
-              <div className="relative flex h-full flex-col overflow-y-auto bg-gray-800 py-6 shadow-xl after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-white/10">
+              <div className="relative flex h-full flex-col scrollbar-container bg-gray-800 py-6 shadow-xl after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-white/10">
+                <div className="scrollbar-content h-full overflow-y-auto">
                 <div className="px-4 sm:px-6">
                   <div className="flex items-start justify-between">
-                    <h2 className="text-base font-semibold text-white">
+                    <h2 className="text-md font-semibold text-white">
                       {isEditMode ? 'Edit Reservation' : 'Create Reservation'}
                     </h2>
                     <div className="ml-3 flex h-7 items-center">
@@ -288,11 +289,14 @@ export default function ReservationDrawer({
                 </div>
 
                 {/* Table and Time Info */}
-                <div className="mt-6 px-4 sm:px-6">
+                <div className="mt-4 px-4 sm:px-6">
                   <div className="rounded-md bg-white/5 p-4">
-                    <div className="text-sm text-gray-300">
+                    <div className="text-xs text-gray-300 space-y-1">
                       <div><strong>Table:</strong> {table.name}</div>
                       <div><strong>Start Time:</strong> {format(toZonedTime(new Date(startTime), config.timezone), 'HH:mm')}</div>
+                      {endTime && (
+                        <div><strong>End Time:</strong> {format(toZonedTime(new Date(endTime), config.timezone), 'HH:mm')}</div>
+                      )}
                       <div><strong>Capacity:</strong> {table.capacity.min}-{table.capacity.max} people</div>
                     </div>
                   </div>
@@ -326,7 +330,7 @@ export default function ReservationDrawer({
                       <h3 className="text-sm font-medium text-white">Customer Information</h3>
                       
                       <div>
-                        <label htmlFor="customerName" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="customerName" className="block text-xs font-medium text-gray-200 mb-2">
                           Name *
                         </label>
                         <div className="rounded-md bg-white/5 px-3 pb-1.5 pt-2.5 outline outline-1 -outline-offset-1 outline-white/10 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500">
@@ -337,14 +341,14 @@ export default function ReservationDrawer({
                             value={formData.customerName}
                             onChange={handleInputChange}
                             required
-                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-sm/6"
+                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-xs"
                             placeholder="John Doe"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label htmlFor="customerPhone" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="customerPhone" className="block text-xs font-medium text-gray-200 mb-2">
                           Phone *
                         </label>
                         <div className="rounded-md bg-white/5 px-3 pb-1.5 pt-2.5 outline outline-1 -outline-offset-1 outline-white/10 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500">
@@ -355,14 +359,14 @@ export default function ReservationDrawer({
                             value={formData.customerPhone}
                             onChange={handleInputChange}
                             required
-                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-sm/6"
+                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-xs"
                             placeholder="+1 (555) 000-0000"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label htmlFor="customerEmail" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="customerEmail" className="block text-xs font-medium text-gray-200 mb-2">
                           Email
                         </label>
                         <div className="rounded-md bg-white/5 px-3 pb-1.5 pt-2.5 outline outline-1 -outline-offset-1 outline-white/10 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500">
@@ -372,14 +376,14 @@ export default function ReservationDrawer({
                             name="customerEmail"
                             value={formData.customerEmail}
                             onChange={handleInputChange}
-                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-sm/6"
+                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-xs"
                             placeholder="john@example.com"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label htmlFor="customerNotes" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="customerNotes" className="block text-xs font-medium text-gray-200 mb-2">
                           Customer Notes
                         </label>
                         <textarea
@@ -388,7 +392,7 @@ export default function ReservationDrawer({
                           value={formData.customerNotes}
                           onChange={handleInputChange}
                           rows={2}
-                          className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
+                          className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-xs"
                           placeholder="Special requests or notes about the customer..."
                         />
                       </div>
@@ -399,7 +403,7 @@ export default function ReservationDrawer({
                       <h3 className="text-sm font-medium text-white">Reservation Details</h3>
                       
                       <div>
-                        <label htmlFor="partySize" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="partySize" className="block text-xs font-medium text-gray-200 mb-2">
                           Party Size *
                         </label>
                         <div className="rounded-md bg-white/5 px-3 pb-1.5 pt-2.5 outline outline-1 -outline-offset-1 outline-white/10 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500">
@@ -412,16 +416,16 @@ export default function ReservationDrawer({
                             min={table.capacity.min}
                             max={table.capacity.max}
                             required
-                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-sm/6"
+                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-xs"
                           />
                         </div>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p className="mt-1.5 text-xs text-gray-400">
                           Table capacity: {table.capacity.min}-{table.capacity.max} people
                         </p>
                       </div>
 
                       <div>
-                        <label htmlFor="durationMinutes" className="block text-xs font-medium text-gray-200 mb-1">
+                        <label htmlFor="durationMinutes" className="block text-xs font-medium text-gray-200 mb-2">
                           Duration (minutes) *
                         </label>
                         <div className="rounded-md bg-white/5 px-3 pb-1.5 pt-2.5 outline outline-1 -outline-offset-1 outline-white/10 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500">
@@ -435,10 +439,10 @@ export default function ReservationDrawer({
                             max={360}
                             step={15}
                             required
-                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-sm/6"
+                            className="block w-full bg-transparent text-white placeholder:text-gray-500 focus:outline focus:outline-0 sm:text-xs"
                           />
                         </div>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p className="mt-1.5 text-xs text-gray-400">
                           Duration: 30 minutes to 6 hours (360 minutes)
                         </p>
                       </div>
@@ -446,10 +450,10 @@ export default function ReservationDrawer({
                       <div>
                         <div className="relative mt-2">
                           <Listbox value={formData.status} onChange={handleStatusChange}>
-                            <label className="block text-xs font-medium text-gray-200 mb-1">
+                            <label className="block text-xs font-medium text-gray-200 mb-2">
                               Status
                             </label>
-                            <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-white/5 py-1.5 pl-3 pr-2 text-left text-white outline outline-1 -outline-offset-1 outline-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 sm:text-sm/6">
+                            <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-white/5 py-1.5 pl-3 pr-2 text-left text-white outline outline-1 -outline-offset-1 outline-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 text-xs ">
                               <span className="col-start-1 row-start-1 flex items-center gap-3 pr-6">
                                 <span
                                   aria-label={formData.status.name}
@@ -468,8 +472,9 @@ export default function ReservationDrawer({
 
                             <ListboxOptions
                               transition
-                              className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-800 py-1 text-base outline outline-1 -outline-offset-1 outline-white/10 data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 data-[leave]:ease-in sm:text-sm"
+                              className="absolute z-10 mt-1 max-h-60 w-full scrollbar-container rounded-md bg-gray-800 py-1 text-base outline outline-1 -outline-offset-1 outline-white/10 data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 data-[leave]:ease-in text-xs  "
                             >
+                              <div className="scrollbar-content max-h-60 overflow-auto">
                               {statusOptions.map((status) => (
                                 <ListboxOption
                                   key={status.id}
@@ -484,7 +489,7 @@ export default function ReservationDrawer({
                                         'inline-block size-2 shrink-0 rounded-full border border-transparent',
                                       )}
                                     />
-                                    <span className="ml-3 block truncate font-normal group-data-[selected]:font-semibold">
+                                    <span className="ml-3 block truncate text-xs group-data-[selected]:font-semibold">
                                       {status.name}
                                     </span>
                                   </div>
@@ -494,6 +499,7 @@ export default function ReservationDrawer({
                                   </span>
                                 </ListboxOption>
                               ))}
+                              </div>
                             </ListboxOptions>
                           </Listbox>
                         </div>
@@ -502,12 +508,12 @@ export default function ReservationDrawer({
                       <div>
                         <div className="relative mt-2">
                           <Listbox value={formData.priority} onChange={handlePriorityChange}>
-                            <label className="block text-xs font-medium text-gray-200 mb-1">
+                            <label className="block text-xs font-medium text-gray-200 mb-2">
                               Priority
                             </label>
                             <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-white/5 py-1.5 pl-3 pr-2 text-left text-white outline outline-1 -outline-offset-1 outline-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 sm:text-sm/6">
                               <span className="col-start-1 row-start-1 flex items-center gap-3 pr-6">
-                                <span className="block truncate">{formData.priority.name}</span>
+                                <span className="block truncate text-xs">{formData.priority.name}</span>
                               </span>
                               <ChevronUpDownIcon
                                 aria-hidden="true"
@@ -517,15 +523,16 @@ export default function ReservationDrawer({
 
                             <ListboxOptions
                               transition
-                              className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-800 py-1 text-base outline outline-1 -outline-offset-1 outline-white/10 data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 data-[leave]:ease-in sm:text-sm"
+                              className="absolute z-10 mt-1 max-h-60 w-full scrollbar-container rounded-md bg-gray-800 py-1 text-xs outline outline-1 -outline-offset-1 outline-white/10 data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 data-[leave]:ease-in"
                             >
+                              <div className="scrollbar-content max-h-60 overflow-auto">
                               {priorityOptions.map((priority) => (
                                 <ListboxOption
                                   key={priority.id}
                                   value={priority}
                                   className="group relative cursor-default select-none py-2 pl-3 pr-9 text-white data-[focus]:bg-indigo-500 data-[focus]:outline-none"
                                 >
-                                  <span className="ml-3 block truncate font-normal group-data-[selected]:font-semibold">
+                                  <span className="ml-3 block truncate text-xs  group-data-[selected]:font-semibold">
                                     {priority.name}
                                   </span>
 
@@ -534,6 +541,7 @@ export default function ReservationDrawer({
                                   </span>
                                 </ListboxOption>
                               ))}
+                              </div>
                             </ListboxOptions>
                           </Listbox>
                         </div>
@@ -550,7 +558,7 @@ export default function ReservationDrawer({
                             value={formData.notes}
                             onChange={handleInputChange}
                             rows={3}
-                            className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
+                            className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-xs placeholder:text-xs text-white outline outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
                             placeholder="Reservation notes..."
                           />
                         </div>
@@ -563,18 +571,19 @@ export default function ReservationDrawer({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/5 hover:bg-white/20"
+                      className="rounded-md bg-white/10 px-3 py-2 text-xs font-semibold text-white ring-1 ring-inset ring-white/5 hover:bg-white/20"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                      className="rounded-md bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                     >
                       {isEditMode ? 'Update' : 'Create'} Reservation
                     </button>
                   </div>
                 </form>
+                </div>
               </div>
             </DialogPanel>
           </div>

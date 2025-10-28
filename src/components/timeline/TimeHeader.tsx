@@ -53,7 +53,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
       dayHeaders.push(
         <div
           key={`day-header-${dayIndex}`}
-          className="absolute top-0 h-6 flex items-center justify-center text-sm font-semibold text-gray-800 bg-gray-50 border-b border-gray-200"
+          className="absolute top-0 h-6 flex items-center justify-center text-sm font-semibold text-gray-800 bg-gray-50 border-gray-200"
           style={{ 
             left: `${dayStartPosition}px`,
             width: `${dayWidth}px`
@@ -75,7 +75,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
       timeLabels.push(
         <div
           key={`hour-${dayIndex}-${hour}`}
-          className="absolute top-6 h-8 flex items-center justify-center text-sm font-medium text-gray-700"
+          className="absolute top-2 h-6 flex items-center justify-center text-sm font-medium text-gray-700"
           style={{ left: `${hourPosition}px`, transform: 'translateX(-50%)' }}
           aria-label={`${hour}:00`}
         >
@@ -92,7 +92,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
           timeLabels.push(
             <div
               key={`quarter-${dayIndex}-${hour}-${quarter}`}
-              className="absolute top-6 h-6 flex items-center justify-center text-xs text-gray-500"
+              className="absolute top-2 h-6 flex items-center justify-center text-xs text-gray-500"
               style={{ left: `${quarterPosition}px`, transform: 'translateX(-50%)' }}
               aria-label={`${hour}:${(quarter * 15).toString().padStart(2, '0')}`}
             >
@@ -108,7 +108,7 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   
   return (
     <div 
-      className="sticky top-0 z-30 bg-white border-b border-gray-300 overflow-visible"
+      className="relative bg-white overflow-visible h-full"
       data-testid="timeline-timeheader"
       aria-label="Timeline header"
     >

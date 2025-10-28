@@ -225,7 +225,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
       return (
         <div 
           ref={ref}
-          className="flex flex-col h-full bg-white"
+          className="flex flex-col h-full bg-white rounded-xl"
           data-testid="timeline-layout"
         >
           <div className="flex-1 overflow-auto" data-testid="timeline-body">
@@ -238,18 +238,35 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     return (
       <div 
         ref={ref}
-        className="flex flex-col h-full bg-white"
+        className="flex flex-col h-full bg-white rounded-md rounded"
         data-testid="timeline-layout"
       >
-        {/* Empty space to align header with position absolute */}
-        <div className="min-h-10"></div>
-        
         {/* Scrollable timeline container */}
         <div 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-auto" 
+          className="flex-1 scrollbar-container rounded-xl" 
           data-testid="timeline-body"
         >
+          <div 
+            ref={scrollContainerRef}
+            className="scrollbar-content h-full"
+          >
+          {/* Time Header - Sticky at top, scrolls horizontally with timeline */}
+          <div 
+            className="sticky top-0 z-40 bg-white border-b border-gray-300 min-h-[40px] flex"
+            style={{
+              width: `${(finalConfig.endHour - finalConfig.startHour) * (60 / finalConfig.slotMinutes) * finalConfig.slotWidth}px`,
+              minWidth: `${(finalConfig.endHour - finalConfig.startHour) * (60 / finalConfig.slotMinutes) * finalConfig.slotWidth}px`
+            }}
+          >
+            {/* Left spacer to align with sticky column */}
+            <div className="min-w-[150px] bg-white border-r border-gray-200"></div>
+            
+            {/* Time Header */}
+            <div className="flex-1 overflow-hidden">
+              <TimeHeader config={finalConfig} />
+            </div>
+          </div>
+          
           <div 
             className="flex h-min-content"
             style={{
@@ -258,7 +275,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             }}
           >
             {/* Left sticky column for table names */}
-            <div className="sticky left-0 z-10 bg-white border-r border-gray-200 min-w-[150px] z-70">
+            <div className="sticky left-0 bg-white border-r border-gray-200 min-w-[150px] z-[41]">
               
               {/* Sectors with grouped table rows */}
               {sortedSectors.map(sector => {
@@ -327,9 +344,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             
             {/* Right scrollable timeline area */}
             <div className="flex-1 overflow-hidden relative min-h-max">
-              {/* Time Header */}
-              <TimeHeader config={finalConfig} />
-              
               {/* Full-height grid lines container */}
               <div 
                 className="absolute inset-y-0 pointer-events-none z-20 h-full"
@@ -401,7 +415,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           
                           return (
                             <div 
-                              className="text-xs"
+                              className="text-xs sticky top-0"
                               style={{ color: getContrastColor(sector.color), opacity: 0.8 }}
                             >
                               {sectorTables.length} table{sectorTables.length !== 1 ? 's' : ''} - {validReservations} reservation{validReservations !== 1 ? 's' : ''}
@@ -430,6 +444,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                 })}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

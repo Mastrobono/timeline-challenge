@@ -17,39 +17,39 @@ import type { TimelineConfig, Table, Reservation, ReservationStatus } from '@/ty
 
 
 export default function TimelinePage() {
-  const { 
-    reservationsById, 
+  const {
+    reservationsById,
     restaurantConfig,
-    ui, 
-    setSlotWidth, 
+    ui,
+    setSlotWidth,
     setVisibleDate,
     updateReservation,
     addReservation,
     tablesById,
     sectorsById
   } = useTimelineStore();
-  
+
   // Hook para auto-inicialización en modo desarrollo
   const { isInitialized, isLoading: isInitializing, error: initError } = useAutoInitialize();
-  
+
   // Notification hook
   const { notification, showNotification, hideNotification } = useNotification();
-  
+
   // Filter state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<ReservationStatus[]>([]);
-  
+
   // Helper function to format time in restaurant timezone
   const formatTimeInTimezone = (isoString: string, timezone: string) => {
     return format(toZonedTime(new Date(isoString), timezone), 'HH:mm');
   };
-  
+
   // Counter for rejected reservations
   const [rejectedCount, setRejectedCount] = useState(0);
-  
+
   // State for filtered reservations from TimelineLayout
   const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
 
@@ -67,14 +67,14 @@ export default function TimelinePage() {
   // Get filtered reservations directly from the store instead of using callback
   const getFilteredReservations = useCallback(() => {
     const allReservations = Object.values(reservationsById);
-    
+
     // Filter reservations for current date
     return allReservations.filter(reservation => {
       const reservationDate = reservation.startTime.split('T')[0];
       return reservationDate === config.date;
     });
   }, [reservationsById, config.date]);
-  
+
   // Update filtered reservations when dependencies change
   useEffect(() => {
     const filtered = getFilteredReservations();
@@ -117,24 +117,24 @@ export default function TimelinePage() {
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
-  
+
   // Drag handlers - moved here to avoid hooks order issues
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     const { active, delta } = event;
     const activeId = String(active.id);
-    
+
     // Only update when we cross slot boundaries
     setDragState(prev => {
       if (prev.activeId === activeId) {
         const prevSlot = Math.floor(prev.delta.x / config.slotWidth);
         const currentSlot = Math.floor(delta.x / config.slotWidth);
-        
+
         // Only update if we've moved to a different slot
         if (prevSlot === currentSlot) {
           return prev;
         }
       }
-      
+
       return {
         activeId,
         delta: { x: delta.x, y: delta.y },
@@ -142,7 +142,7 @@ export default function TimelinePage() {
       };
     });
   }, [config.slotWidth]);
-  
+
   // Mostrar loading mientras se inicializa en modo desarrollo
   if (process.env.NODE_ENV === 'development' && !isInitialized) {
     return (
@@ -171,9 +171,9 @@ export default function TimelinePage() {
       </div>
     );
   }
-  
+
   // Log removido para limpiar consola
-  
+
   // Zoom controls
   const zoomLevels = [
     { label: '50%', value: 30 },
@@ -182,18 +182,18 @@ export default function TimelinePage() {
     { label: '125%', value: 75 },
     { label: '150%', value: 90 },
   ];
-  
+
   const handleZoomChange = (slotWidth: number) => {
     setSlotWidth(slotWidth);
   };
-  
+
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setVisibleDate(event.target.value);
   };
 
   // Filter handlers
   const handleSectorToggle = (sectorId: string) => {
-    setSelectedSectors(prev => 
+    setSelectedSectors(prev =>
       prev.includes(sectorId)
         ? prev.filter(id => id !== sectorId)
         : [...prev, sectorId]
@@ -201,7 +201,7 @@ export default function TimelinePage() {
   };
 
   const handleStatusToggle = (status: ReservationStatus) => {
-    setSelectedStatuses(prev => 
+    setSelectedStatuses(prev =>
       prev.includes(status)
         ? prev.filter(s => s !== status)
         : [...prev, status]
@@ -222,7 +222,7 @@ export default function TimelinePage() {
       startTime,
       reservation: null
     });
-    
+
     // Set selected slot for visual feedback
     setSelectedSlot({
       tableId: table.id,
@@ -261,7 +261,7 @@ export default function TimelinePage() {
       endTime,
       previewReservation
     });
-    
+
     // Clear selected slot since we're creating a new reservation
     setSelectedSlot({
       tableId: null,
@@ -276,14 +276,14 @@ export default function TimelinePage() {
       console.error('Table not found for reservation:', reservation.tableId);
       return;
     }
-    
+
     setDrawerState({
       isOpen: true,
       table: reservationTable,
       startTime: reservation.startTime,
       reservation
     });
-    
+
     // Set editing reservation for visual feedback
     setEditingReservation(reservation.id);
   };
@@ -297,7 +297,7 @@ export default function TimelinePage() {
       previewReservation: null,
       validationErrors: []
     });
-    
+
     // Clear selected slot and editing reservation
     setSelectedSlot({
       tableId: null,
@@ -325,11 +325,11 @@ export default function TimelinePage() {
   const handleSaveReservation = (reservation: Reservation): boolean => {
     // Check if this reservation already exists in the store
     const existingReservation = reservationsById[reservation.id];
-    
+
     // Validate before saving
     const allTables = Object.values(tablesById);
     const existingReservations = Object.values(reservationsById);
-    
+
     const validation = ReservationValidationService.validateReservation(
       reservation,
       {
@@ -348,7 +348,7 @@ export default function TimelinePage() {
       }));
       return false;
     }
-    
+
     if (existingReservation) {
       // Edit mode - update existing
       updateReservation(reservation.id, reservation);
@@ -366,14 +366,14 @@ export default function TimelinePage() {
         `New reservation for ${reservation.customer.name} has been created successfully.`
       );
     }
-    
+
     return true;
   };
 
   const handleDragStart = (event: DragStartEvent) => {
     const activeId = String(event.active.id);
     let dragType: 'move' | 'resize-left' | 'resize-right' | null = null;
-    
+
     if (activeId.startsWith('resize-left-')) {
       dragType = 'resize-left';
     } else if (activeId.startsWith('resize-right-')) {
@@ -381,7 +381,7 @@ export default function TimelinePage() {
     } else {
       dragType = 'move';
     }
-    
+
     setDragState({
       activeId,
       delta: { x: 0, y: 0 },
@@ -391,45 +391,45 @@ export default function TimelinePage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over, delta } = event;
-    
+
     // Clear drag state
     setDragState({
       activeId: null,
       delta: { x: 0, y: 0 },
       dragType: null,
     });
-    
+
     if (!over || !active) return;
-    
+
     // Get the dragged reservation
     const reservation = active.data.current?.reservation;
     if (!reservation) return;
-    
+
     const activeId = String(active.id);
     const deltaX = delta.x || 0;
-    
+
     // Handle resize operations
     if (activeId.startsWith('resize-left-')) {
       // RESIZE LEFT LOGIC - change start time, keep end time
       const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
       const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
-      
+
       // Calculate new start slot based on delta with better rounding
       // Convert delta to slots and round to nearest slot boundary
       const slotDelta = Math.round(deltaX / config.slotWidth);
       const newStartSlot = Math.max(0, originalStartSlot + slotDelta);
-      
+
       // Log removido para limpiar consola
-      
+
       // Calculate total slots available in the timeline
       const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
-      
+
       // Ensure new start is before end and duration is valid (at least 2 slots = 30 minutes)
       const newDurationSlots = originalEndSlot - newStartSlot;
       if (newStartSlot >= originalEndSlot || originalEndSlot > totalSlots || newDurationSlots < 2) {
         return;
       }
-      
+
       // Check for conflicts using the full validation service
       const allTables = Object.values(tablesById);
       const updatedReservation = {
@@ -437,12 +437,12 @@ export default function TimelinePage() {
         startTime: slotToIso(newStartSlot, config),
         endTime: reservation.endTime
       };
-      
+
       // Use filtered reservations if available, otherwise use all reservations
-      const reservationsForValidation = filteredReservations.length > 0 
+      const reservationsForValidation = filteredReservations.length > 0
         ? filteredReservations.filter(r => r.id !== reservation.id)
         : Object.values(reservationsById).filter(r => r.id !== reservation.id);
-      
+
       const validation = ReservationValidationService.validateReservation(
         updatedReservation,
         {
@@ -452,7 +452,7 @@ export default function TimelinePage() {
           timezone: config.timezone
         }
       );
-      
+
       if (!validation.isValid) {
         console.log('🚫 RESIZE LEFT VALIDATION FAILED:', {
           reservationId: reservation.id,
@@ -462,7 +462,7 @@ export default function TimelinePage() {
           originalEndSlot,
           errors: validation.errors
         });
-        
+
         // Show error notification
         showNotification(
           'error',
@@ -471,39 +471,39 @@ export default function TimelinePage() {
         );
         return;
       }
-      
+
       // Calculate new start time
       const newStartTime = slotToIso(newStartSlot, config);
-      
+
       // Update the reservation
       updateReservation(reservation.id, {
         startTime: newStartTime,
         endTime: reservation.endTime, // Keep original end time
       });
-      
+
       // No notification for resize operations (silent update)
-      
+
     } else if (activeId.startsWith('resize-right-')) {
       // RESIZE RIGHT LOGIC - change end time, keep start time
       const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
       const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
-      
+
       // Calculate new end slot based on delta with better rounding
       // Convert delta to slots and round to nearest slot boundary
       const slotDelta = Math.round(deltaX / config.slotWidth);
       const newEndSlot = Math.max(originalStartSlot + 1, originalEndSlot + slotDelta);
-      
+
       // Log simplificado para resize right
-      
+
       // Calculate total slots available in the timeline
       const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
-      
+
       // Ensure new end is after start and within timeline bounds (at least 2 slots = 30 minutes)
       const newDurationSlots = newEndSlot - originalStartSlot;
       if (newEndSlot <= originalStartSlot || newEndSlot > totalSlots || newDurationSlots < 2) {
         return;
       }
-      
+
       // Check for conflicts using the full validation service
       const allTables = Object.values(tablesById);
       const updatedReservation = {
@@ -511,12 +511,12 @@ export default function TimelinePage() {
         startTime: reservation.startTime,
         endTime: slotToIso(newEndSlot, config)
       };
-      
+
       // Use filtered reservations if available, otherwise use all reservations
-      const reservationsForValidation = filteredReservations.length > 0 
+      const reservationsForValidation = filteredReservations.length > 0
         ? filteredReservations.filter(r => r.id !== reservation.id)
         : Object.values(reservationsById).filter(r => r.id !== reservation.id);
-      
+
       const validation = ReservationValidationService.validateReservation(
         updatedReservation,
         {
@@ -526,7 +526,7 @@ export default function TimelinePage() {
           timezone: config.timezone
         }
       );
-      
+
       if (!validation.isValid) {
         console.log('🚫 RESIZE RIGHT VALIDATION FAILED:', {
           reservationId: reservation.id,
@@ -536,7 +536,7 @@ export default function TimelinePage() {
           newEndSlot,
           errors: validation.errors
         });
-        
+
         // Show error notification
         showNotification(
           'error',
@@ -545,44 +545,44 @@ export default function TimelinePage() {
         );
         return;
       }
-      
+
       // Calculate new end time
       const newEndTime = slotToIso(newEndSlot, config);
-      
+
       // Update the reservation
       updateReservation(reservation.id, {
         startTime: reservation.startTime, // Keep original start time
         endTime: newEndTime,
       });
-      
+
       // No notification for resize operations (silent update)
-      
+
     } else {
       // MOVE LOGIC (existing functionality)
       // Get the target table
       const targetTableId = String(over.id);
       if (!targetTableId) return;
-      
+
       // Calculate new position based on delta with better rounding
       const originalStartSlot = isoToSlotIndex(reservation.startTime, config);
       const slotDelta = Math.round(deltaX / config.slotWidth);
       const newStartSlot = Math.max(0, originalStartSlot + slotDelta);
-      
+
       // Log simplificado para move
-      
+
       // Calculate new end slot (maintain duration)
       const originalEndSlot = isoToSlotIndex(reservation.endTime, config);
       const duration = originalEndSlot - originalStartSlot;
       const newEndSlot = newStartSlot + duration;
-      
+
       // Calculate total slots available in the timeline
       const totalSlots = (config.endHour - config.startHour) * (60 / config.slotMinutes);
-      
+
       // Prevent dragging outside timeline bounds - be more strict
       if (newStartSlot < 0 || newEndSlot > totalSlots || newStartSlot >= totalSlots) {
         return;
       }
-      
+
       // Check if the new position is valid using the full validation service
       const allTables = Object.values(tablesById);
       const updatedReservation = {
@@ -591,12 +591,12 @@ export default function TimelinePage() {
         startTime: slotToIso(newStartSlot, config),
         endTime: slotToIso(newEndSlot, config)
       };
-      
+
       // Use filtered reservations if available, otherwise use all reservations
-      const reservationsForValidation = filteredReservations.length > 0 
+      const reservationsForValidation = filteredReservations.length > 0
         ? filteredReservations.filter(r => r.id !== reservation.id)
         : Object.values(reservationsById).filter(r => r.id !== reservation.id);
-      
+
       const validation = ReservationValidationService.validateReservation(
         updatedReservation,
         {
@@ -606,7 +606,7 @@ export default function TimelinePage() {
           timezone: config.timezone
         }
       );
-      
+
       if (!validation.isValid) {
         console.log('🚫 MOVE VALIDATION FAILED:', {
           reservationId: reservation.id,
@@ -617,7 +617,7 @@ export default function TimelinePage() {
           newEndSlot,
           errors: validation.errors
         });
-        
+
         // Show error notification
         showNotification(
           'error',
@@ -626,31 +626,32 @@ export default function TimelinePage() {
         );
         return;
       }
-      
+
       // Calculate new start and end times
       const newStartTime = slotToIso(newStartSlot, config);
       const newEndTime = slotToIso(newEndSlot, config);
-      
+
       // Update the reservation
       updateReservation(reservation.id, {
         tableId: targetTableId,
         startTime: newStartTime,
         endTime: newEndTime,
       });
-      
+
       // No notification for move operations (silent update)
-      
+
     }
   };
-  
-    return (
-    <DndContext 
+
+  return (
+    <DndContext
       sensors={sensors}
       collisionDetection={rectIntersection}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
+
       <div className="h-full bg-gray-900">
         {/* Sidebar */}
         <Sidebar
@@ -667,20 +668,20 @@ export default function TimelinePage() {
           onStatusToggle={handleStatusToggle}
           onClearFilters={handleClearFilters}
         />
-        
+
         {/* Main content area with sidebar offset */}
-        <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-72'}`}>
+        <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-6' : 'lg:pl-72'}`}>
           {/* Enhanced Toolbar */}
           <EnhancedToolbar
             onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
             zoomLevel={ui.slotWidth}
             onZoomChange={handleZoomChange}
           />
-          
+
           {/* Timeline */}
-          <div className="h-[calc(100vh-4rem)] overflow-hidden">
-            <TimelineLayout 
-              config={config} 
+          <div className="h-[calc(100vh-4rem)] p-4 overflow-hidden">
+            <TimelineLayout
+              config={config}
               dragState={dragState}
               selectedSlot={selectedSlot}
               editingReservation={editingReservation}
@@ -695,7 +696,7 @@ export default function TimelinePage() {
             />
           </div>
         </div>
-        
+
         {/* Create/Edit Reservation Drawer */}
         <ReservationDrawer
           isOpen={drawerState.isOpen}
@@ -711,7 +712,7 @@ export default function TimelinePage() {
           onUpdatePreview={handleUpdatePreview}
           onClearErrors={handleClearErrors}
         />
-        
+
         {/* Notification */}
         {notification && (
           <Notification

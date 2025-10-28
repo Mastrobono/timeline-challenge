@@ -170,7 +170,8 @@ export default function CreateReservationModal({
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] scrollbar-container">
+        <div className="scrollbar-content max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -374,6 +375,7 @@ export default function CreateReservationModal({
               </button>
             </div>
           </form>
+        </div>
         </div>
       </div>
     </div>
