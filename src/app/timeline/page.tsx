@@ -5,13 +5,15 @@ import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMov
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import ReservationDrawer from '@/components/timeline/ReservationDrawer';
 import Notification from '@/components/ui/Notification';
+import Sidebar from '@/components/Sidebar';
+import EnhancedToolbar from '@/components/timeline/EnhancedToolbar';
 import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
 import { useNotification } from '@/hooks/useNotification';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
-import { pxToSlot, slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
+import { slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import { format, toZonedTime } from 'date-fns-tz';
-import type { TimelineConfig, Table, Reservation } from '@/types';
+import type { TimelineConfig, Table, Reservation, ReservationStatus } from '@/types';
 
 
 export default function TimelinePage() {
@@ -23,7 +25,8 @@ export default function TimelinePage() {
     setVisibleDate,
     updateReservation,
     addReservation,
-    tablesById
+    tablesById,
+    sectorsById
   } = useTimelineStore();
   
   // Hook para auto-inicialización en modo desarrollo
@@ -31,6 +34,13 @@ export default function TimelinePage() {
   
   // Notification hook
   const { notification, showNotification, hideNotification } = useNotification();
+  
+  // Filter state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatuses, setSelectedStatuses] = useState<ReservationStatus[]>([]);
   
   // Helper function to format time in restaurant timezone
   const formatTimeInTimezone = (isoString: string, timezone: string) => {
@@ -200,7 +210,9 @@ export default function TimelinePage() {
   // Zoom controls
   const zoomLevels = [
     { label: '50%', value: 30 },
+    { label: '75%', value: 45 },
     { label: '100%', value: 60 },
+    { label: '125%', value: 75 },
     { label: '150%', value: 90 },
   ];
   
@@ -210,6 +222,29 @@ export default function TimelinePage() {
   
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setVisibleDate(event.target.value);
+  };
+
+  // Filter handlers
+  const handleSectorToggle = (sectorId: string) => {
+    setSelectedSectors(prev => 
+      prev.includes(sectorId)
+        ? prev.filter(id => id !== sectorId)
+        : [...prev, sectorId]
+    );
+  };
+
+  const handleStatusToggle = (status: ReservationStatus) => {
+    setSelectedStatuses(prev => 
+      prev.includes(status)
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSelectedSectors([]);
+    setSearchTerm('');
+    setSelectedStatuses([]);
   };
 
   // Drawer handlers
@@ -598,101 +633,67 @@ export default function TimelinePage() {
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen flex flex-col bg-gray-100">
-      {/* Toolbar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 h-14">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <h1 className="text-xl font-semibold text-gray-900">Restaurant Timeline</h1>
-            
-            {/* Restaurant Config Info */}
-            {restaurantConfig && (
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">Restaurant:</span>
-                  <span className="text-gray-900">{restaurantConfig.name}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">Timezone:</span>
-                  <span className="text-gray-900">{restaurantConfig.timezone}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">Hours:</span>
-                  <span className="text-gray-900">
-                    {restaurantConfig.operatingHours.startHour}:00 - {restaurantConfig.operatingHours.endHour}:00
-                  </span>
-                </div>
-              </div>
-            )}
-            
-            {/* Date picker */}
-            <div className="flex items-center space-x-2">
-              <label htmlFor="date-picker" className="text-sm font-medium text-gray-700">
-                Date:
-              </label>
-              <input
-                id="date-picker"
-                type="date"
-                value={ui.visibleDate}
-                onChange={handleDateChange}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+      <div className="h-full bg-gray-900">
+        {/* Sidebar */}
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+          sectors={Object.values(sectorsById)}
+          selectedSectors={selectedSectors}
+          onSectorToggle={handleSectorToggle}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedStatuses={selectedStatuses}
+          onStatusToggle={handleStatusToggle}
+          onClearFilters={handleClearFilters}
+        />
+        
+        {/* Main content area with sidebar offset */}
+        <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-72'}`}>
+          {/* Enhanced Toolbar */}
+          <EnhancedToolbar
+            onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
+            zoomLevel={ui.slotWidth}
+            onZoomChange={handleZoomChange}
+          />
           
-          {/* Zoom controls */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Zoom:</span>
-            <div className="flex space-x-1">
-              {zoomLevels.map(({ label, value }) => (
-                <button
-                  key={value}
-                  onClick={() => handleZoomChange(value)}
-                  className={`px-3 py-1 text-sm rounded-md border transition-colors ${
-                    ui.slotWidth === value
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          {/* Timeline */}
+          <div className="h-[calc(100vh-4rem)] overflow-hidden">
+            <TimelineLayout 
+              config={config} 
+              dragState={dragState}
+              selectedSlot={selectedSlot}
+              editingReservation={editingReservation}
+              scrollContainerRef={timelineRef}
+              onSlotClick={handleOpenCreateDrawer}
+              onEditClick={handleOpenEditDrawer}
+              selectedSectors={selectedSectors}
+              searchTerm={searchTerm}
+              selectedStatuses={selectedStatuses}
+            />
           </div>
         </div>
-      </div>
-      
-      {/* Timeline */}
-      <div className="flex-1 overflow-hidden">
-        <TimelineLayout 
-          config={config} 
-          dragState={dragState}
-          selectedSlot={selectedSlot}
-          editingReservation={editingReservation}
-          scrollContainerRef={timelineRef}
-          onSlotClick={handleOpenCreateDrawer}
-          onEditClick={handleOpenEditDrawer}
+        
+        {/* Create/Edit Reservation Drawer */}
+        <ReservationDrawer
+          isOpen={drawerState.isOpen}
+          table={drawerState.table}
+          startTime={drawerState.startTime}
+          config={config}
+          reservation={drawerState.reservation}
+          onClose={handleCloseDrawer}
+          onSave={handleSaveReservation}
         />
-      </div>
-      
-      {/* Create/Edit Reservation Drawer */}
-      <ReservationDrawer
-        isOpen={drawerState.isOpen}
-        table={drawerState.table}
-        startTime={drawerState.startTime}
-        config={config}
-        reservation={drawerState.reservation}
-        onClose={handleCloseDrawer}
-        onSave={handleSaveReservation}
-      />
-      
-      {/* Notification */}
-      {notification && (
-        <Notification
-          notification={notification}
-          onClose={hideNotification}
-        />
-      )}
+        
+        {/* Notification */}
+        {notification && (
+          <Notification
+            notification={notification}
+            onClose={hideNotification}
+          />
+        )}
       </div>
     </DndContext>
   );

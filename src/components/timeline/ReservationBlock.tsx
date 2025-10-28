@@ -5,7 +5,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { PencilIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import type { Reservation, TimelineConfig, DragState, Table } from '@/types';
-import { STATUS_COLORS } from '@/lib/constants';
+import { STATUS_COLORS, PRIORITY_BADGES } from '@/lib/constants';
 
 
 interface ReservationBlockProps {
@@ -211,7 +211,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
     <div
       ref={(node) => {
         setNodeRef(node);
-        // @ts-ignore - We're storing this for calculating tooltip position
+        // @ts-expect-error - We're storing this for calculating tooltip position
         if (node) blockRef.current = node.parentElement;
       }}
       style={{
@@ -239,7 +239,15 @@ export default function ReservationBlock({ reservation, config, dragState, table
     >
       <div className="flex items-center gap-1 h-full relative">
         <div className="flex-1 min-w-0">
-          <div className="truncate font-semibold">{customer.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="truncate font-semibold">{customer.name}</div>
+            {/* Priority Badge */}
+            <div className="flex-shrink-0">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white border border-white/30">
+                {PRIORITY_BADGES[priority]}
+              </span>
+            </div>
+          </div>
           <div className="text-xs opacity-90">{partySize} people</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">

@@ -4,7 +4,6 @@ import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/ty
 import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
 import { ROW_HEIGHT } from '@/lib/constants';
 import useTimelineStore, { getValidReservationsForSector } from '@/store/useTimelineStore';
-import Toolbar from './Toolbar';
 import TimeHeader from './TimeHeader';
 import TableRow from './TableRow';
 import MonthView from './MonthView';
@@ -46,10 +45,13 @@ interface TimelineLayoutProps {
   onSlotClick?: (table: Table, startTime: string) => void;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  selectedSectors?: string[];
+  searchTerm?: string;
+  selectedStatuses?: string[];
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick, scrollContainerRef }, ref) => {
+  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
     // Use store data if props are not provided
     const store = useTimelineStore();
     const { ui, toggleSectorCollapse } = store;
@@ -78,7 +80,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     
     const finalConfig = config || defaultConfig;
     
-    // Filter reservations based on viewMode, visibleDate, and timezone
+    // Filter reservations based on viewMode, visibleDate, timezone, sectors, search, and status
     const filteredReservations = useMemo(() => {
       // First filter by date
       const dateFilteredReservations = finalReservations.filter(reservation => {
@@ -123,8 +125,44 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         store.restaurantConfig
       );
       
-      return timezoneFilteredReservations;
-    }, [finalReservations, visibleDate, viewMode, finalConfig.timezone, finalConfig, store.restaurantConfig]);
+      // Apply sector filter
+      let sectorFiltered = timezoneFilteredReservations;
+      if (selectedSectors.length > 0) {
+        const allSectorsInStore = Object.values(store.sectorsById);
+        // If all sectors are selected, show all
+        if (selectedSectors.length < allSectorsInStore.length) {
+          // Filter by sectors
+          sectorFiltered = timezoneFilteredReservations.filter(reservation => {
+            const table = finalTables.find(t => t.id === reservation.tableId);
+            return table && selectedSectors.includes(table.sectorId);
+          });
+        }
+      }
+      
+      // Apply search filter
+      let searchFiltered = sectorFiltered;
+      if (searchTerm.length > 0) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        searchFiltered = sectorFiltered.filter(reservation => {
+          const nameMatch = reservation.customer.name.toLowerCase().includes(lowerSearchTerm);
+          const phoneMatch = reservation.customer.phone.includes(lowerSearchTerm);
+          return nameMatch || phoneMatch;
+        });
+      }
+      
+      // Apply status filter
+      let statusFiltered = searchFiltered;
+      if (selectedStatuses.length > 0 && selectedStatuses.length < 6) {
+        // If all statuses are selected, show all
+        if (selectedStatuses.length < 6) {
+          statusFiltered = searchFiltered.filter(reservation => 
+            selectedStatuses.includes(reservation.status)
+          );
+        }
+      }
+      
+      return statusFiltered;
+    }, [finalReservations, visibleDate, viewMode, finalConfig.timezone, finalConfig, store.restaurantConfig, selectedSectors, searchTerm, selectedStatuses, finalTables, store.sectorsById]);
     
     
     // Calculate timeline dimensions based on view mode
@@ -180,7 +218,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
           className="flex flex-col h-full bg-white"
           data-testid="timeline-layout"
         >
-          <Toolbar />
           <div className="flex-1 overflow-auto" data-testid="timeline-body">
             <MonthView />
           </div>
@@ -194,9 +231,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         className="flex flex-col h-full bg-white"
         data-testid="timeline-layout"
       >
-        {/* Toolbar */}
-        <Toolbar />
-
         {/* Empty space to align header with position absolute */}
         <div className="min-h-10"></div>
         

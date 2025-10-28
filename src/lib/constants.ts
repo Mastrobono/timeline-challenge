@@ -3,13 +3,19 @@ export const ROW_HEIGHT = 60; // Table row height
 export const HEADER_HEIGHT = 40; // TimeHeader height
 export const TOOLBAR_HEIGHT = 60; // Toolbar height
 
-// Reservation status colors
+// Reservation status colors (matching sidebar colors)
 export const STATUS_COLORS = {
-  PENDING: 'bg-yellow-400',
-  CONFIRMED: 'bg-blue-500',
-  SEATED: 'bg-green-500',
-  FINISHED: 'bg-gray-400',
-  NO_SHOW: 'bg-red-500',
-  // For CANCELLED, we need a striped pattern
-  CANCELLED: 'bg-[repeating-linear-gradient(45deg,theme(colors.gray.300),theme(colors.gray.300)_10px,theme(colors.gray.400)_10px,theme(colors.gray.400)_20px)]',
+  PENDING: 'bg-amber-500',    // #f59e0b
+  CONFIRMED: 'bg-emerald-500', // #10b981
+  SEATED: 'bg-blue-500',       // #3b82f6
+  FINISHED: 'bg-gray-500',     // #6b7280
+  NO_SHOW: 'bg-red-500',        // #ef4444
+  CANCELLED: 'bg-violet-500',   // #8b5cf6
+} as const;
+
+// Priority badge mapping
+export const PRIORITY_BADGES = {
+  VIP: 'V',
+  LARGE_GROUP: 'LG',
+  STANDARD: 'S',
 } as const;
