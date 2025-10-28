@@ -46,17 +46,16 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
   if (daysInView > 1) {
     for (let dayIndex = 0; dayIndex < daysInView; dayIndex++) {
       const dayDate = addDays(new Date(visibleDate), dayIndex);
-      const dayStartSlot = dayIndex * slotsPerDay;
-      const dayStartPosition = slotToPx(dayStartSlot, config);
+      const dayStartPosition = dayIndex * slotsPerDay * slotWidth;
       const dayWidth = slotsPerDay * slotWidth;
       
       dayHeaders.push(
         <div
           key={`day-header-${dayIndex}`}
-          className="absolute top-0 h-6 flex items-center justify-center text-sm font-semibold text-gray-800 bg-gray-50 border-gray-200"
+          className="absolute top-0 h-6 flex items-start text-xs font-semibold text-gray-800 "
           style={{ 
             left: `${dayStartPosition}px`,
-            width: `${dayWidth}px`
+            width: 'auto',
           }}
         >
           {format(dayDate, 'EEE, MMM d')}
@@ -75,8 +74,11 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
       timeLabels.push(
         <div
           key={`hour-${dayIndex}-${hour}`}
-          className="absolute top-2 h-6 flex items-center justify-center text-sm font-medium text-gray-700"
-          style={{ left: `${hourPosition}px`, transform: 'translateX(-50%)' }}
+          className="absolute h-6 flex items-center justify-center text-xs font-medium text-gray-700"
+          style={{ 
+            left: `${hourPosition}px`, 
+            transform: hour === startHour ? 'translateX(0)' : 'translateX(-50%)'
+          }}
           aria-label={`${hour}:00`}
         >
           {hour}:00
@@ -92,8 +94,11 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
           timeLabels.push(
             <div
               key={`quarter-${dayIndex}-${hour}-${quarter}`}
-              className="absolute top-2 h-6 flex items-center justify-center text-xs text-gray-500"
-              style={{ left: `${quarterPosition}px`, transform: 'translateX(-50%)' }}
+              className="absolute h-6 flex items-center justify-center text-xs text-gray-500"
+              style={{ 
+                left: `${quarterPosition}px`, 
+                transform: (hour === startHour && quarter === 1) ? 'translateX(0)' : 'translateX(-50%)'
+              }}
               aria-label={`${hour}:${(quarter * 15).toString().padStart(2, '0')}`}
             >
               {hour}:{(quarter * 15).toString().padStart(2, '0')}
@@ -116,11 +121,15 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
         className="relative h-full"
         style={{ width: `${totalWidth}px` }}
       >
-        {/* Day headers */}
-        {dayHeaders}
+        {/* Day headers - top row */}
+        <div className="absolute top-0 left-0 w-full h-6">
+          {dayHeaders}
+        </div>
         
-        {/* Time labels */}
-        {timeLabels}
+        {/* Time labels - bottom row */}
+        <div className="absolute top-6 left-0 w-full h-6">
+          {timeLabels}
+        </div>
       </div>
     </div>
   );

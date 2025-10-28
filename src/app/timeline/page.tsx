@@ -232,6 +232,17 @@ export default function TimelinePage() {
 
   // Handle drag-to-create reservation
   const handleCreateReservation = (table: Table, startTime: string, endTime: string) => {
+    console.log('TimelinePage - handleCreateReservation:', {
+      tableId: table.id,
+      tableName: table.name,
+      startTime,
+      endTime,
+      startDate: startTime.split('T')[0],
+      endDate: endTime.split('T')[0],
+      configDate: config.date,
+      viewMode: config.viewMode
+    });
+    
     // Create a preview reservation for UI feedback
     const previewReservation: Reservation = {
       id: `preview-${Date.now()}`, // Temporary ID
@@ -323,6 +334,16 @@ export default function TimelinePage() {
   };
 
   const handleSaveReservation = (reservation: Reservation): boolean => {
+    console.log('TimelinePage - handleSaveReservation:', {
+      reservationId: reservation.id,
+      startTime: reservation.startTime,
+      endTime: reservation.endTime,
+      startDate: reservation.startTime.split('T')[0],
+      endDate: reservation.endTime.split('T')[0],
+      tableId: reservation.tableId,
+      isExisting: !!reservationsById[reservation.id]
+    });
+    
     // Check if this reservation already exists in the store
     const existingReservation = reservationsById[reservation.id];
 

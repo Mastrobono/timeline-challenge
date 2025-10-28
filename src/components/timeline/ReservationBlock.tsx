@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { PencilIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, InformationCircleIcon, UsersIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid';
 import type { Reservation, TimelineConfig, DragState, Table } from '@/types';
 import { STATUS_COLORS, PRIORITY_BADGES } from '@/lib/constants';
 
@@ -100,14 +100,52 @@ export default function ReservationBlock({ reservation, config, dragState, table
   const startZoned = toZonedTime(startDate, config.timezone);
   const endZoned = toZonedTime(endDate, config.timezone);
   
+  // Calculate the day difference from config.date
+  const configDate = new Date(config.date + 'T00:00:00');
+  const configZoned = toZonedTime(configDate, config.timezone);
+  const dayDiff = Math.floor((startZoned.getTime() - configZoned.getTime()) / (1000 * 60 * 60 * 24));
+  
   // Calculate slot positions based on timezone-aware time
   const startHour = startZoned.getHours();
   const startMinute = startZoned.getMinutes();
   const endHour = endZoned.getHours();
   const endMinute = endZoned.getMinutes();
   
-  const startSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
-  const endSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
+  const slotsPerDay = (config.endHour - config.startHour) * (60 / config.slotMinutes);
+  const dayStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
+  const dayEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
+  
+  // Calculate absolute slot positions including day offset
+  const startSlot = dayStartSlot + (dayDiff * slotsPerDay);
+  const endSlot = dayEndSlot + (dayDiff * slotsPerDay);
+  
+  // Don't render reservations that are outside the visible range
+  // For week view, only show reservations within the current week
+  const maxVisibleDays = config.viewMode === 'week' ? 7 : config.viewMode === '3-day' ? 3 : 1;
+  if (dayDiff < 0 || dayDiff >= maxVisibleDays) {
+    console.log('ReservationBlock - Skipping reservation outside visible range:', {
+      reservationId: reservation.id,
+      dayDiff,
+      maxVisibleDays,
+      viewMode: config.viewMode
+    });
+    return null;
+  }
+  
+  console.log('ReservationBlock - Position calculation:', {
+    reservationId: reservation.id,
+    startTime,
+    endTime,
+    dayDiff,
+    slotsPerDay,
+    dayStartSlot,
+    dayEndSlot,
+    startSlot,
+    endSlot,
+    configDate: config.date,
+    startZonedDate: startZoned.toISOString().split('T')[0],
+    endZonedDate: endZoned.toISOString().split('T')[0]
+  });
   
   // Calculate position and width
   const left = startSlot * config.slotWidth;
@@ -121,8 +159,10 @@ export default function ReservationBlock({ reservation, config, dragState, table
     }
 
     // Use timezone-aware times for preview calculations
-    const originalStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
-    const originalEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
+    const originalDayStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
+    const originalDayEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
+    const originalStartSlot = originalDayStartSlot + (dayDiff * slotsPerDay);
+    const originalEndSlot = originalDayEndSlot + (dayDiff * slotsPerDay);
     const deltaX = dragState.delta.x;
     // Use Math.round for better preview behavior - snap to slot boundaries
     const deltaSlots = Math.round(deltaX / config.slotWidth);
@@ -175,6 +215,11 @@ export default function ReservationBlock({ reservation, config, dragState, table
   // Create timezone-aware tooltip (reuse already calculated zoned times)
   const timeString = `${format(startZoned, 'HH:mm')} - ${format(endZoned, 'HH:mm')}`;
   
+  // Add date to tooltip for multi-day views
+  const tooltipText = config.viewMode === 'week' || config.viewMode === '3-day' 
+    ? `${format(startZoned, 'MMM d')} • ${timeString}`
+    : timeString;
+  
   // Handle edit icon click
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -224,7 +269,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
       {...attributes}
       onDoubleClick={handleDoubleClick}
       data-reservation-id={reservation.id}
-      className={`group absolute left-0 rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[reservation.status]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
+      className={`group absolute left-0 rounded px-6 py-1 text-xs font-medium ${STATUS_COLORS[reservation.status]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50' : ''
       } ${
         dragState?.activeId === `resize-left-${reservation.id}` || 
@@ -237,10 +282,10 @@ export default function ReservationBlock({ reservation, config, dragState, table
           : ''
       }`}
     >
-      <div className="flex items-center gap-1 h-full relative">
+      <div className="flex items-center gap-1 h-full relative ">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="truncate font-semibold">{customer.name}</div>
+            <div className="truncate font-semibold user-select-none">{customer.name}</div>
             {/* Priority Badge */}
             <div className="flex-shrink-0">
               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white border border-white/30">
@@ -248,7 +293,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
               </span>
             </div>
           </div>
-          <div className="text-xs opacity-90">{partySize} people</div>
+          <div className="text-xs opacity-90 flex items-center gap-1 user-select-none"><UsersIcon className="size-3" /> {partySize}</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Hide buttons during resize */}
@@ -258,7 +303,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
               {onEditClick && (
                 <button
                   onClick={handleEditClick}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded user-select-none cursor-pointer"
                   title="Edit reservation"
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -269,7 +314,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
               <button
                 onMouseEnter={handleInfoMouseEnter}
                 onMouseLeave={handleInfoMouseLeave}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded user-select-none cursor-pointer"
                 title="Show details"
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -294,7 +339,7 @@ export default function ReservationBlock({ reservation, config, dragState, table
         >
           <div className="text-sm font-semibold mb-2">{customer.name}</div>
           <div className="space-y-1 text-xs">
-            <div><span className="font-medium">Time:</span> {timeString}</div>
+            <div><span className="font-medium">Time:</span> {tooltipText}</div>
             <div><span className="font-medium">Party Size:</span> {partySize} people</div>
             <div><span className="font-medium">Status:</span> {reservation.status}</div>
             <div><span className="font-medium">Priority:</span> {reservation.priority}</div>
@@ -319,18 +364,30 @@ export default function ReservationBlock({ reservation, config, dragState, table
         ref={setLeftHandleRef}
         {...leftListeners}
         {...leftAttributes}
-        className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-white hover:bg-opacity-30 transition-colors"
+        className={`absolute left-0 top-0 bottom-0 w-4 cursor-col-resize flex items-center justify-center transition-opacity ${
+          dragState?.activeId === `resize-left-${reservation.id}` 
+            ? 'opacity-100' 
+            : 'opacity-0 hover:opacity-100'
+        }`}
         title="Resize from start"
-      />
+      >
+        <AdjustmentsHorizontalIcon className="w-8 h-8 text-white drop-shadow-lg" />
+      </div>
       
       {/* Right Resize Handle */}
       <div 
         ref={setRightHandleRef}
         {...rightListeners}
         {...rightAttributes}
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-white hover:bg-opacity-30 transition-colors"
+        className={`absolute right-0 top-0 bottom-0 w-4 cursor-col-resize flex items-center justify-center transition-opacity ${
+          dragState?.activeId === `resize-right-${reservation.id}` 
+            ? 'opacity-100' 
+            : 'opacity-0 hover:opacity-100'
+        }`}
         title="Resize from end"
-      />
+      >
+        <AdjustmentsHorizontalIcon className="w-8 h-8 text-white drop-shadow-lg" />
+      </div>
     </div>
   );
 }

@@ -13,17 +13,33 @@ export function slotToMinutes(slotIndex: number, config: TimelineConfig): number
  * Convert a slot index to ISO string in the configured timezone
  * This function creates a time that represents the slot in the target timezone
  */
-export function slotToIso(slotIndex: number, config: TimelineConfig): string {
+export function slotToIso(slotIndex: number, config: TimelineConfig, baseDate?: string): string {
+  const slotsPerDay = getSlotsPerDay(config);
+  const dayIndex = Math.floor(slotIndex / slotsPerDay);
+  const daySlotIndex = slotIndex % slotsPerDay;
+  
+  // Use baseDate if provided, otherwise use config.date
+  const targetDate = baseDate || config.date;
+  
+  console.log('slotToIso - Conversion:', {
+    slotIndex,
+    slotsPerDay,
+    dayIndex,
+    daySlotIndex,
+    targetDate,
+    configDate: config.date
+  });
+  
   // Calculate the actual hour and minute for this slot
-  // slotIndex is relative to startHour, so we need to add startHour to get the actual hour
-  const minutesFromMidnight = slotToMinutes(slotIndex, config);
+  // daySlotIndex is relative to startHour, so we need to add startHour to get the actual hour
+  const minutesFromMidnight = slotToMinutes(daySlotIndex, config);
   const totalMinutesFromMidnight = (config.startHour * 60) + minutesFromMidnight;
   const actualHour = Math.floor(totalMinutesFromMidnight / 60);
   const actualMinute = totalMinutesFromMidnight % 60;
   
   // Create a date string that represents the time in the target timezone
   const timeString = `${actualHour.toString().padStart(2, '0')}:${actualMinute.toString().padStart(2, '0')}:00`;
-  const dateTimeString = `${config.date}T${timeString}`;
+  const dateTimeString = `${targetDate}T${timeString}`;
   
   // Create a date object - this will be interpreted as local time
   const localDate = new Date(dateTimeString);
@@ -32,13 +48,18 @@ export function slotToIso(slotIndex: number, config: TimelineConfig): string {
   // This treats the localDate as if it were in the target timezone
   const utcDate = fromZonedTime(localDate, config.timezone);
   
-  // Log removido para limpiar consola
+  console.log('slotToIso - Result:', {
+    timeString,
+    dateTimeString,
+    utcDate: utcDate.toISOString()
+  });
   
   return utcDate.toISOString();
 }
 
 /**
  * Convert an ISO string to slot index in the configured timezone
+ * This version handles multi-day views by calculating the absolute slot index
  */
 export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   const utcDate = new Date(iso);
@@ -48,18 +69,36 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   const configDate = new Date(config.date + 'T00:00:00');
   const zonedConfigDate = toZonedTime(configDate, config.timezone);
   
+  // Calculate the day difference
+  const dayDiff = Math.floor((zonedDate.getTime() - zonedConfigDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  console.log('isoToSlotIndex - Conversion:', {
+    iso,
+    configDate: config.date,
+    zonedDate: zonedDate.toISOString().split('T')[0],
+    dayDiff
+  });
+  
   // Calculate minutes from midnight in the restaurant timezone
-  // Use direct calculation instead of differenceInMinutes to avoid DST issues
   const minutesFromMidnight = (zonedDate.getHours() * 60) + zonedDate.getMinutes();
   
   // Convert to slot index relative to startHour
-  // slotIndex should be relative to startHour, not from midnight
   const minutesFromStartHour = minutesFromMidnight - (config.startHour * 60);
-  const slotIndex = Math.floor(minutesFromStartHour / config.slotMinutes);
+  const daySlotIndex = Math.floor(minutesFromStartHour / config.slotMinutes);
   
-  // Log removido para limpiar consola
+  // Calculate absolute slot index including day offset
+  const slotsPerDay = getSlotsPerDay(config);
+  const absoluteSlotIndex = daySlotIndex + (dayDiff * slotsPerDay);
   
-  return Math.max(0, slotIndex); // Ensure non-negative slot index
+  console.log('isoToSlotIndex - Result:', {
+    minutesFromMidnight,
+    minutesFromStartHour,
+    daySlotIndex,
+    slotsPerDay,
+    absoluteSlotIndex
+  });
+  
+  return Math.max(0, absoluteSlotIndex);
 }
 
 /**
