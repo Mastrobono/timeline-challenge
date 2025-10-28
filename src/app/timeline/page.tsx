@@ -97,7 +97,10 @@ export default function TimelinePage() {
     isOpen: boolean;
     table: Table | null;
     startTime: string | null;
+    endTime?: string | null;
     reservation: Reservation | null;
+    previewReservation?: Reservation | null; // For showing preview after drag
+    validationErrors?: string[]; // Validation errors from save
   }>({ isOpen: false, table: null, startTime: null, reservation: null });
 
   // State for selected slot (for visual feedback)
@@ -111,42 +114,6 @@ export default function TimelinePage() {
 
   // Ref for timeline container to enable scrolling
   const timelineRef = useRef<HTMLDivElement>(null);
-
-  // Function to scroll to selected slot
-  const scrollToSelectedSlot = useCallback((tableId: string, startTime: string) => {
-    if (!timelineRef.current) return;
-    
-    // Find the table row element
-    const tableRow = timelineRef.current.querySelector(`[data-table-id="${tableId}"]`);
-    if (!tableRow) return;
-    
-    // Calculate slot position
-    const startSlot = isoToSlotIndex(startTime, config);
-    const slotLeft = startSlot * config.slotWidth;
-    
-    // Get container dimensions
-    const container = timelineRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const tableRect = tableRow.getBoundingClientRect();
-    
-    // Calculate scroll positions to center the slot
-    const containerWidth = containerRect.width;
-    const containerHeight = containerRect.height;
-    
-    // Center horizontally: slot position - half container width + half slot width
-    const targetScrollLeft = slotLeft - (containerWidth / 2) + (config.slotWidth / 2);
-    
-    // Center vertically: table position relative to container
-    const tableTop = (tableRow as HTMLElement).offsetTop;
-    const targetScrollTop = tableTop - (containerHeight / 2) + (60 / 2); // 60 is ROW_HEIGHT
-    
-    // Apply scroll with smooth behavior
-    container.scrollTo({
-      left: Math.max(0, targetScrollLeft),
-      top: Math.max(0, targetScrollTop),
-      behavior: 'smooth'
-    });
-  }, [config]);
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
@@ -261,11 +228,45 @@ export default function TimelinePage() {
       tableId: table.id,
       startTime: startTime
     });
+  };
+
+  // Handle drag-to-create reservation
+  const handleCreateReservation = (table: Table, startTime: string, endTime: string) => {
+    // Create a preview reservation for UI feedback
+    const previewReservation: Reservation = {
+      id: `preview-${Date.now()}`, // Temporary ID
+      tableId: table.id,
+      startTime,
+      endTime,
+      customer: {
+        name: 'New Reservation',
+        phone: '',
+        email: '',
+        notes: ''
+      },
+      partySize: table.capacity.min,
+      status: 'PENDING',
+      priority: 'STANDARD',
+      notes: '',
+      durationMinutes: Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000 * 60)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setDrawerState({
+      isOpen: true,
+      table,
+      startTime,
+      reservation: null,
+      endTime,
+      previewReservation
+    });
     
-    // Scroll to the selected slot after a short delay to ensure DOM is updated
-    setTimeout(() => {
-      scrollToSelectedSlot(table.id, startTime);
-    }, 100);
+    // Clear selected slot since we're creating a new reservation
+    setSelectedSlot({
+      tableId: null,
+      startTime: null
+    });
   };
 
   const handleOpenEditDrawer = (reservation: Reservation, table: Table, startTime: string) => {
@@ -292,7 +293,9 @@ export default function TimelinePage() {
       isOpen: false,
       table: null,
       startTime: null,
-      reservation: null
+      reservation: null,
+      previewReservation: null,
+      validationErrors: []
     });
     
     // Clear selected slot and editing reservation
@@ -301,6 +304,22 @@ export default function TimelinePage() {
       startTime: null
     });
     setEditingReservation(null);
+  };
+
+  // Handle updating preview reservation
+  const handleUpdatePreview = (updatedPreview: Reservation) => {
+    setDrawerState(prev => ({
+      ...prev,
+      previewReservation: updatedPreview
+    }));
+  };
+
+  // Handle clearing validation errors
+  const handleClearErrors = () => {
+    setDrawerState(prev => ({
+      ...prev,
+      validationErrors: []
+    }));
   };
 
   const handleSaveReservation = (reservation: Reservation): boolean => {
@@ -322,12 +341,11 @@ export default function TimelinePage() {
     );
 
     if (!validation.isValid) {
-      // Show error notification
-      showNotification(
-        'error',
-        'Validation failed',
-        validation.errors[0] || 'Cannot create/update reservation due to conflicts.'
-      );
+      // Set validation errors in drawer state instead of showing notification
+      setDrawerState(prev => ({
+        ...prev,
+        validationErrors: validation.errors
+      }));
       return false;
     }
     
@@ -666,9 +684,11 @@ export default function TimelinePage() {
               dragState={dragState}
               selectedSlot={selectedSlot}
               editingReservation={editingReservation}
+              previewReservation={drawerState.previewReservation}
               scrollContainerRef={timelineRef}
               onSlotClick={handleOpenCreateDrawer}
               onEditClick={handleOpenEditDrawer}
+              onCreateReservation={handleCreateReservation}
               selectedSectors={selectedSectors}
               searchTerm={searchTerm}
               selectedStatuses={selectedStatuses}
@@ -681,10 +701,15 @@ export default function TimelinePage() {
           isOpen={drawerState.isOpen}
           table={drawerState.table}
           startTime={drawerState.startTime}
+          endTime={drawerState.endTime}
           config={config}
           reservation={drawerState.reservation}
+          previewReservation={drawerState.previewReservation}
+          validationErrors={drawerState.validationErrors}
           onClose={handleCloseDrawer}
           onSave={handleSaveReservation}
+          onUpdatePreview={handleUpdatePreview}
+          onClearErrors={handleClearErrors}
         />
         
         {/* Notification */}

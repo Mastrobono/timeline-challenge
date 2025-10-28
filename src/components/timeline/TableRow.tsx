@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import type { Table, Reservation, TimelineConfig, DragState } from '@/types';
 import { ROW_HEIGHT } from '@/lib/constants';
@@ -18,12 +18,20 @@ interface TableRowProps {
   editingReservation?: string | null;
   onSlotClick?: (table: Table, startTime: string) => void;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  onCreateReservation?: (table: Table, startTime: string, endTime: string) => void;
 }
 
-export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick }: TableRowProps) {
+export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick, onCreateReservation }: TableRowProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: table.id,
   });
+
+  // State for drag-to-create functionality
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; slotIndex: number } | null>(null);
+  const [dragEnd, setDragEnd] = useState<{ x: number; slotIndex: number } | null>(null);
+  const [hasDragged, setHasDragged] = useState(false);
+  const dragRef = useRef<HTMLDivElement>(null);
 
   /**
    * Handle clicks on empty slots in the timeline
@@ -32,6 +40,12 @@ export default function TableRow({ table, reservations, config, dragState, selec
   const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Prevent event conflicts - only handle clicks directly on the empty row
     if (e.target !== e.currentTarget) {
+      return;
+    }
+
+    // Prevent click if we just finished dragging
+    if (hasDragged) {
+      setHasDragged(false);
       return;
     }
 
@@ -49,6 +63,88 @@ export default function TableRow({ table, reservations, config, dragState, selec
     
     // Call the onSlotClick handler with table and startTime
     onSlotClick(table, startTime);
+  };
+
+  // Handle mouse down to start drag-to-create
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent event conflicts - only handle clicks directly on the empty row
+    if (e.target !== e.currentTarget) {
+      return;
+    }
+
+    // Prevent default to avoid text selection
+    e.preventDefault();
+    
+    const clickX = e.nativeEvent.offsetX;
+    const slotIndex = pxToSlot(clickX, config);
+    
+    // Calculate the exact position of the nearest slot
+    const slotPosition = slotIndex * config.slotWidth;
+    
+    setDragStart({ x: slotPosition, slotIndex });
+    setDragEnd({ x: slotPosition, slotIndex });
+    setIsDragging(true);
+    setHasDragged(false); // Reset drag flag
+  };
+
+  // Handle mouse move during drag
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStart) return;
+    
+    const currentX = e.nativeEvent.offsetX;
+    const slotIndex = pxToSlot(currentX, config);
+    
+    // Calculate the exact position of the current slot
+    const slotPosition = slotIndex * config.slotWidth;
+    
+    // Mark that we've dragged if we've moved more than 5 pixels
+    if (Math.abs(slotPosition - dragStart.x) > 5) {
+      setHasDragged(true);
+    }
+    
+    setDragEnd({ x: slotPosition, slotIndex });
+  };
+
+  // Handle mouse up to complete drag-to-create
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStart || !dragEnd) {
+      setIsDragging(false);
+      setDragStart(null);
+      setDragEnd(null);
+      return;
+    }
+
+    // Only proceed with drag-to-create if we actually dragged
+    if (hasDragged && onCreateReservation) {
+      // Calculate start and end times
+      const startSlotIndex = Math.min(dragStart.slotIndex, dragEnd.slotIndex);
+      const endSlotIndex = Math.max(dragStart.slotIndex, dragEnd.slotIndex);
+      
+      // Ensure minimum duration of 1 slot (15 minutes)
+      const finalEndSlotIndex = Math.max(endSlotIndex, startSlotIndex + 1);
+      
+      const startTime = slotToIso(startSlotIndex, config);
+      const endTime = slotToIso(finalEndSlotIndex, config);
+      
+      // Call the onCreateReservation handler
+      onCreateReservation(table, startTime, endTime);
+    }
+    
+    // Reset state
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+    // Keep hasDragged true to prevent click event
+  };
+
+  // Handle mouse leave to cancel drag
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      setDragStart(null);
+      setDragEnd(null);
+      setHasDragged(false);
+    }
   };
 
   // Check if this table row has a selected slot
@@ -77,10 +173,16 @@ export default function TableRow({ table, reservations, config, dragState, selec
       style={{ height: `${ROW_HEIGHT}px` }}
     >
       <div 
+        ref={dragRef}
         className="relative h-full"
         onClick={handleSlotClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         style={{ 
-          width: `${(config.endHour - config.startHour) * (60 / config.slotMinutes) * config.slotWidth}px` 
+          width: `${(config.endHour - config.startHour) * (60 / config.slotMinutes) * config.slotWidth}px`,
+          cursor: isDragging ? 'col-resize' : 'pointer'
         }}
       >
         {/* Selected slot overlay */}
@@ -90,6 +192,17 @@ export default function TableRow({ table, reservations, config, dragState, selec
             style={{
               left: `${selectedSlotPosition.left}px`,
               width: `${selectedSlotPosition.width}px`
+            }}
+          />
+        )}
+
+        {/* Drag-to-create overlay */}
+        {isDragging && dragStart && dragEnd && (
+          <div
+            className="absolute top-0 bottom-0 bg-green-200 bg-opacity-50 border-2 border-green-500 border-opacity-70 pointer-events-none z-60"
+            style={{
+              left: `${Math.min(dragStart.x, dragEnd.x)}px`,
+              width: `${Math.abs(dragEnd.x - dragStart.x)}px`
             }}
           />
         )}

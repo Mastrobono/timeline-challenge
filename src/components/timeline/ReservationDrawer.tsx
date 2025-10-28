@@ -11,10 +11,15 @@ interface ReservationDrawerProps {
   isOpen: boolean;
   table: Table | null;
   startTime: string | null;
+  endTime?: string | null;
   config: TimelineConfig;
   reservation?: Reservation | null; // Optional existing reservation for edit mode
+  previewReservation?: Reservation | null; // Preview reservation for real-time updates
   onClose: () => void;
   onSave: (reservation: Reservation) => boolean;
+  onUpdatePreview?: (reservation: Reservation) => void; // Callback to update preview
+  validationErrors?: string[]; // External validation errors
+  onClearErrors?: () => void; // Callback to clear errors
 }
 
 const statusOptions = [
@@ -40,10 +45,15 @@ export default function ReservationDrawer({
   isOpen,
   table,
   startTime,
+  endTime,
   config,
   reservation = null,
+  previewReservation = null,
   onClose,
-  onSave
+  onSave,
+  onUpdatePreview,
+  validationErrors: externalErrors = [],
+  onClearErrors
 }: ReservationDrawerProps) {
   
   const isEditMode = !!reservation;
@@ -60,6 +70,52 @@ export default function ReservationDrawer({
     priority: priorityOptions[0], // STANDARD
     notes: ''
   });
+
+  // Error state for validation messages
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  // Combine internal and external validation errors
+  const allErrors = [...validationErrors, ...externalErrors];
+
+  // Update preview reservation in real-time when form data changes
+  useEffect(() => {
+    if (previewReservation && onUpdatePreview && table && startTime) {
+      const updatedPreview: Reservation = {
+        ...previewReservation,
+        customer: {
+          ...previewReservation.customer,
+          name: formData.customerName || 'New Reservation',
+          phone: formData.customerPhone,
+          email: formData.customerEmail,
+          notes: formData.customerNotes
+        },
+        partySize: formData.partySize,
+        durationMinutes: formData.durationMinutes,
+        status: formData.status.id as ReservationStatus,
+        priority: formData.priority.id as Priority,
+        notes: formData.notes,
+        // Recalculate endTime based on new duration
+        endTime: new Date(new Date(startTime).getTime() + formData.durationMinutes * 60000).toISOString()
+      };
+      
+      // Only update if there are actual changes to avoid infinite loop
+      const hasChanges = 
+        updatedPreview.customer.name !== previewReservation.customer.name ||
+        updatedPreview.customer.phone !== previewReservation.customer.phone ||
+        updatedPreview.customer.email !== previewReservation.customer.email ||
+        updatedPreview.customer.notes !== previewReservation.customer.notes ||
+        updatedPreview.partySize !== previewReservation.partySize ||
+        updatedPreview.durationMinutes !== previewReservation.durationMinutes ||
+        updatedPreview.status !== previewReservation.status ||
+        updatedPreview.priority !== previewReservation.priority ||
+        updatedPreview.notes !== previewReservation.notes ||
+        updatedPreview.endTime !== previewReservation.endTime;
+      
+      if (hasChanges) {
+        onUpdatePreview(updatedPreview);
+      }
+    }
+  }, [formData, onUpdatePreview, table, startTime]); // Removed previewReservation from dependencies
 
   // Reset form when modal opens with new data
   useEffect(() => {
@@ -87,13 +143,22 @@ export default function ReservationDrawer({
         });
       } else if (table) {
         // Create mode - reset to defaults
+        let initialDuration = 120; // Default duration
+        
+        // If endTime is provided, calculate duration from startTime and endTime
+        if (startTime && endTime) {
+          const start = new Date(startTime);
+          const end = new Date(endTime);
+          initialDuration = Math.round((end.getTime() - start.getTime()) / (1000 * 60)); // Convert to minutes
+        }
+        
         setFormData({
           customerName: '',
           customerPhone: '',
           customerEmail: '',
           customerNotes: '',
           partySize: table.capacity.min,
-          durationMinutes: 120,
+          durationMinutes: initialDuration,
           status: statusOptions[1], // CONFIRMED
           priority: priorityOptions[0], // STANDARD
           notes: ''
@@ -106,20 +171,27 @@ export default function ReservationDrawer({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Clear previous validation errors
+    setValidationErrors([]);
+    
     if (!table || !startTime) {
+      setValidationErrors(['Missing table or start time information']);
       return;
     }
 
     // Basic validation for required fields
     if (!formData.customerName.trim()) {
+      setValidationErrors(['Customer name is required']);
       return;
     }
 
     if (!formData.customerPhone.trim()) {
+      setValidationErrors(['Customer phone is required']);
       return;
     }
 
     if (formData.partySize < table.capacity.min || formData.partySize > table.capacity.max) {
+      setValidationErrors([`Party size must be between ${table.capacity.min} and ${table.capacity.max}`]);
       return;
     }
 
@@ -228,6 +300,26 @@ export default function ReservationDrawer({
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="mt-6 flex-1 px-4 sm:px-6">
+                  {/* Validation Errors */}
+                  {allErrors.length > 0 && (
+                    <div className="mb-4 rounded-md bg-red-50 p-4">
+                      <div className="flex">
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Please correct the following errors:
+                          </h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <ul className="list-disc pl-5 space-y-1">
+                              {allErrors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="space-y-6">
                     {/* Customer Information */}
                     <div className="space-y-4">

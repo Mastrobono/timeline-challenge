@@ -1,5 +1,6 @@
 import React, { forwardRef, useMemo, useEffect } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
 import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
 import { ROW_HEIGHT } from '@/lib/constants';
@@ -42,8 +43,10 @@ interface TimelineLayoutProps {
     startTime: string | null;
   };
   editingReservation?: string | null;
+  previewReservation?: Reservation | null;
   onSlotClick?: (table: Table, startTime: string) => void;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  onCreateReservation?: (table: Table, startTime: string, endTime: string) => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   selectedSectors?: string[];
   searchTerm?: string;
@@ -51,7 +54,7 @@ interface TimelineLayoutProps {
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, onSlotClick, onEditClick, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
+  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, previewReservation, onSlotClick, onEditClick, onCreateReservation, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
     // Use store data if props are not provided
     const store = useTimelineStore();
     const { ui, toggleSectorCollapse } = store;
@@ -206,7 +209,14 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     
     // Get reservations for each table
     const getReservationsForTable = (tableId: string) => {
-      return filteredReservations.filter(res => res.tableId === tableId);
+      const tableReservations = filteredReservations.filter(res => res.tableId === tableId);
+      
+      // Add preview reservation if it exists and matches this table
+      if (previewReservation && previewReservation.tableId === tableId) {
+        return [...tableReservations, previewReservation];
+      }
+      
+      return tableReservations;
     };
     
     
@@ -266,18 +276,31 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                       }}
                       onClick={() => toggleSectorCollapse(sector.id)}
                     >
-                      <div className="flex-1">
-                        <div 
-                          className="font-semibold text-sm"
-                          style={{ color: getContrastColor(sector.color) }}
-                        >
-                          {sector.name}
+                      <div className="flex items-center flex-1">
+                        {/* Toggle Icon */}
+                        <div className="mr-2 flex-shrink-0">
+                          {isCollapsed ? (
+                            <ChevronRightIcon 
+                              className="h-4 w-4" 
+                              style={{ color: getContrastColor(sector.color) }}
+                            />
+                          ) : (
+                            <ChevronDownIcon 
+                              className="h-4 w-4" 
+                              style={{ color: getContrastColor(sector.color) }}
+                            />
+                          )}
                         </div>
-                        <div 
-                          className="text-xs"
-                          style={{ color: getContrastColor(sector.color), opacity: 0.8 }}
-                        >
-                          {isCollapsed ? ' (collapsed)' : ''}
+                        
+                        {/* Sector Name */}
+                        <div className="flex-1">
+                          <div 
+                            className="font-semibold text-sm"
+                            style={{ color: getContrastColor(sector.color) }}
+                          >
+                            {sector.name}
+                          </div>
+                         
                         </div>
                       </div>
                     </div>
@@ -399,6 +422,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           editingReservation={editingReservation}
                           onSlotClick={onSlotClick}
                           onEditClick={onEditClick}
+                          onCreateReservation={onCreateReservation}
                         />
                       ))}
                     </div>
