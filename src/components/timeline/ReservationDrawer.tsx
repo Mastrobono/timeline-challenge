@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogPanel, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { XMarkIcon, ChevronUpDownIcon, CheckIcon, SparklesIcon, ClockIcon, TableCellsIcon } from '@heroicons/react/24/outline';
-import { format, toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import type { Table, Reservation, ReservationStatus, Priority, TimelineConfig, Sector } from '@/types';
 import { STATUS_COLORS } from '@/lib/constants';
 import { AutoSchedulingService, type TableSuggestion, type TimeSlot, type VIPAnalysis } from '@/lib/autoSchedulingService';
@@ -138,7 +139,7 @@ export default function ReservationDrawer({
         existingReservations,
         config,
         { 
-          maxSuggestions: 5,
+          maxSuggestions: 8,
           preferredSectorId: formData.preferredSectorId || undefined
         }
       );
@@ -161,26 +162,20 @@ export default function ReservationDrawer({
       const sectors = Object.values(sectorsById);
       const existingReservations = Object.values(reservationsById);
       
-      // Calculate a time AFTER the clicked slot to avoid conflicts
-      const clickedTime = new Date(startTime);
-      const searchStartTime = new Date(clickedTime.getTime() + 15 * 60 * 1000); // 15 minutes after clicked time
-      
-      // Search in ALL tables for better availability
-      
       const slots = AutoSchedulingService.findNextAvailableSlots(
         formData.partySize,
-        searchStartTime.toISOString(), // Start searching AFTER the clicked time
+        startTime,
         formData.durationMinutes,
-        tables, // Search in ALL tables for better availability
+        tables,
         sectors,
         existingReservations,
         config,
         {
           partySize: formData.partySize,
           durationMinutes: formData.durationMinutes,
-          preferredTime: startTime, // Keep the clicked slot as preferred time
-          searchWindows: [15, 30, 60, 120], // Extended search windows
-          maxSuggestions: 12 // More suggestions
+          preferredTime: startTime,
+          searchWindows: [15, 30, 60],
+          maxSuggestions: 8
         }
       );
       
@@ -619,6 +614,7 @@ export default function ReservationDrawer({
                           type="button"
                           onClick={() => setShowSuggestions(false)}
                           className="text-green-400 hover:text-green-300"
+                          aria-label="close suggestions"
                         >
                           <XMarkIcon className="h-4 w-4" />
                         </button>
@@ -677,6 +673,7 @@ export default function ReservationDrawer({
                           type="button"
                           onClick={() => setShowAvailabilitySearch(false)}
                           className="text-blue-400 hover:text-blue-300"
+                          aria-label="close available time slots"
                         >
                           <XMarkIcon className="h-4 w-4" />
                         </button>

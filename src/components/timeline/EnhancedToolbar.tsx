@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import useTimelineStore from '@/store/useTimelineStore'
 import { formatDateForDisplay } from '@/lib/timeUtils'
 
@@ -50,7 +51,7 @@ export default function EnhancedToolbar({
   }
 
   return (
-    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4  border-white/10 bg-gray-900 px-4 shadow-sm sm:gap-x-6  lg:px-4">
+    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4  border-white/10 bg-gray-900 px-4 shadow-sm sm:gap-x-6  lg:px-4" data-testid="timeline-toolbar">
       <div aria-hidden="true" className="h-6 w-px bg-white/10 lg:hidden" />
 
       <div className="flex flex-1 items-center justify-between">
@@ -122,6 +123,7 @@ export default function EnhancedToolbar({
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as 'day' | '3-day' | 'week' | 'month')}
               className="px-3 py-2 bg-gray-800 text-white border border-white/10 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              aria-label="Select view mode"
             >
               <option value="day">Day</option>
               <option value="3-day">3-Day</option>

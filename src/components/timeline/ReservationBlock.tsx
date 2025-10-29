@@ -94,64 +94,132 @@ export default function ReservationBlock({ reservation, config, dragState, table
     opacity: isDragging ? 0.8 : 1,
   };
   
-  // Convert ISO times to slot positions using timezone-aware calculation
-  const startDate = new Date(startTime);
-  const endDate = new Date(endTime);
-  
-  // Convert to the selected timezone for positioning calculation
-  const startZoned = toZonedTime(startDate, config.timezone);
-  const endZoned = toZonedTime(endDate, config.timezone);
-  
-  // Calculate the day difference from config.date
-  const configDate = new Date(config.date + 'T00:00:00');
-  const configZoned = toZonedTime(configDate, config.timezone);
-  const dayDiff = Math.floor((startZoned.getTime() - configZoned.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Calculate slot positions based on timezone-aware time
-  const startHour = startZoned.getHours();
-  const startMinute = startZoned.getMinutes();
-  const endHour = endZoned.getHours();
-  const endMinute = endZoned.getMinutes();
-  
-  const slotsPerDay = (config.endHour - config.startHour) * (60 / config.slotMinutes);
-  const dayStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
-  const dayEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
-  
-  // Calculate absolute slot positions including day offset
-  const startSlot = dayStartSlot + (dayDiff * slotsPerDay);
-  const endSlot = dayEndSlot + (dayDiff * slotsPerDay);
-  
-  // Don't render reservations that are outside the visible range
-  // For week view, only show reservations within the current week
-  const maxVisibleDays = config.viewMode === 'week' ? 7 : config.viewMode === '3-day' ? 3 : 1;
-  if (dayDiff < 0 || dayDiff >= maxVisibleDays) {
-    // console.log('ReservationBlock - Skipping reservation outside visible range:', {
+      // Convert ISO times to slot positions using timezone-aware calculation
+      let left: number;
+      let width: number;
+      let startHour: number;
+      let startMinute: number;
+      let endHour: number;
+      let endMinute: number;
+      let dayDiff: number;
+      let slotsPerDay: number;
+      let dayStartSlot: number;
+      let dayEndSlot: number;
+      let startSlot: number;
+      let endSlot: number;
+      let startZoned: Date;
+      let endZoned: Date;
+
+      try {
+        const startDate = new Date(startTime);
+        const endDate = new Date(endTime);
+        
+        // Validate dates before proceeding
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.warn('ReservationBlock: Invalid date in reservation', { startTime, endTime, reservationId: reservation.id });
+          return null;
+        }
+        
+        // Convert to the selected timezone for positioning calculation
+        startZoned = toZonedTime(startDate, config.timezone);
+        endZoned = toZonedTime(endDate, config.timezone);
+    
+    // Debug logging for tests
+    if (process.env.NODE_ENV === 'test') {
+      console.log('ReservationBlock Debug:', {
+        reservationId: reservation.id,
+        startTime,
+        endTime,
+        configTimezone: config.timezone,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        startZoned: startZoned.toISOString(),
+        endZoned: endZoned.toISOString(),
+        startHour: startZoned.getHours(),
+        endHour: endZoned.getHours(),
+        configStartHour: config.startHour,
+        configEndHour: config.endHour
+      });
+    }
+    
+    // Calculate the day difference from config.date
+    const configDate = new Date(config.date + 'T00:00:00Z'); // Parse as UTC
+    if (isNaN(configDate.getTime())) {
+      console.warn('ReservationBlock: Invalid config date', { configDate: config.date, reservationId: reservation.id });
+      return null;
+    }
+    const configZoned = toZonedTime(configDate, config.timezone);
+    dayDiff = Math.floor((startZoned.getTime() - configZoned.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Debug logging for day difference calculation
+    if (process.env.NODE_ENV === 'test') {
+      console.log('ReservationBlock Day Diff Debug:', {
+        reservationId: reservation.id,
+        configDate: config.date,
+        configDateParsed: configDate.toISOString(),
+        configZoned: configZoned.toISOString(),
+        startZoned: startZoned.toISOString(),
+        dayDiff,
+        viewMode: config.viewMode
+      });
+    }
+    
+    // Calculate slot positions based on timezone-aware time
+    startHour = startZoned.getHours();
+    startMinute = startZoned.getMinutes();
+    endHour = endZoned.getHours();
+    endMinute = endZoned.getMinutes();
+    
+    slotsPerDay = (config.endHour - config.startHour) * (60 / config.slotMinutes);
+    dayStartSlot = ((startHour - config.startHour) * 4) + (startMinute / 15);
+    dayEndSlot = ((endHour - config.startHour) * 4) + (endMinute / 15);
+    
+    // Calculate absolute slot positions including day offset
+    startSlot = dayStartSlot + (dayDiff * slotsPerDay);
+    endSlot = dayEndSlot + (dayDiff * slotsPerDay);
+    
+    // Don't render reservations that are outside the visible range
+    // For week view, only show reservations within the current week
+    const maxVisibleDays = config.viewMode === 'week' ? 7 : config.viewMode === '3-day' ? 3 : 1;
+    if (dayDiff < 0 || dayDiff >= maxVisibleDays) {
+      // console.log('ReservationBlock - Skipping reservation outside visible range:', {
+      //   reservationId: reservation.id,
+      //   dayDiff,
+      //   maxVisibleDays,
+      //   viewMode: config.viewMode
+      // });
+      return null;
+    }
+    
+    // console.log('ReservationBlock - Position calculation:', {
     //   reservationId: reservation.id,
+    //   startTime,
+    //   endTime,
     //   dayDiff,
-    //   maxVisibleDays,
-    //   viewMode: config.viewMode
+    //   slotsPerDay,
+    //   dayStartSlot,
+    //   dayEndSlot,
+    //   startSlot,
+    //   endSlot,
+    //   configDate: config.date,
+    //   startZonedDate: startZoned.toISOString().split('T')[0],
+    //   endZonedDate: endZoned.toISOString().split('T')[0]
     // });
+    
+    // Calculate position and width
+    left = startSlot * config.slotWidth;
+    width = (endSlot - startSlot) * config.slotWidth;
+
+  } catch (error) {
+    console.error('ReservationBlock: Error in position calculation', {
+      reservationId: reservation.id,
+      startTime,
+      endTime,
+      configTimezone: config.timezone,
+      error: error.message
+    });
     return null;
   }
-  
-  // console.log('ReservationBlock - Position calculation:', {
-  //   reservationId: reservation.id,
-  //   startTime,
-  //   endTime,
-  //   dayDiff,
-  //   slotsPerDay,
-  //   dayStartSlot,
-  //   dayEndSlot,
-  //   startSlot,
-  //   endSlot,
-  //   configDate: config.date,
-  //   startZonedDate: startZoned.toISOString().split('T')[0],
-  //   endZonedDate: endZoned.toISOString().split('T')[0]
-  // });
-  
-  // Calculate position and width
-  const left = startSlot * config.slotWidth;
-  const width = (endSlot - startSlot) * config.slotWidth;
 
   // Calculate preview dimensions
   const previewDimensions = useMemo(() => {
@@ -206,21 +274,45 @@ export default function ReservationBlock({ reservation, config, dragState, table
 
   // Don't render if reservation is outside visible hours
   if (startHour < config.startHour || startHour >= config.endHour) {
+    console.log('ReservationBlock - Hour validation failed:', {
+      reservationId: reservation.id,
+      startHour,
+      configStartHour: config.startHour,
+      configEndHour: config.endHour,
+      startTime,
+      endTime
+    });
     return null;
   }
   
   // Don't render if end hour is outside visible hours
   if (endHour < config.startHour || endHour > config.endHour) {
+    console.log('ReservationBlock - End hour validation failed:', {
+      reservationId: reservation.id,
+      endHour,
+      configStartHour: config.startHour,
+      configEndHour: config.endHour,
+      startTime,
+      endTime
+    });
     return null;
   }
   
   // Create timezone-aware tooltip (reuse already calculated zoned times)
-  const timeString = `${format(startZoned, 'HH:mm')} - ${format(endZoned, 'HH:mm')}`;
+  // Add validation to prevent format errors
+  let timeString: string;
+  let tooltipText: string;
   
-  // Add date to tooltip for multi-day views
-  const tooltipText = config.viewMode === 'week' || config.viewMode === '3-day' 
-    ? `${format(startZoned, 'MMM d')} • ${timeString}`
-    : timeString;
+  try {
+    timeString = `${format(startZoned, 'HH:mm')} - ${format(endZoned, 'HH:mm')}`;
+    tooltipText = config.viewMode === 'week' || config.viewMode === '3-day' 
+      ? `${format(startZoned, 'MMM d')} • ${timeString}`
+      : timeString;
+  } catch (error) {
+    console.warn('ReservationBlock: Error formatting dates', { error, startZoned, endZoned, reservationId: reservation.id });
+    timeString = 'Invalid time';
+    tooltipText = 'Invalid time';
+  }
   
   // Handle edit icon click
   const handleEditClick = (e: React.MouseEvent) => {

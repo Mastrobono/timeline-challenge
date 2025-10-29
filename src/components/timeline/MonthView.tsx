@@ -46,11 +46,16 @@ export default function MonthView() {
     
     // Filter reservations for this specific day
     const dayReservations = allReservations.filter(reservation => {
+      if (!reservation.startTime) {
+        return false;
+      }
       // Convert UTC reservation time to restaurant timezone to get the correct date
       const reservationDate = new Date(reservation.startTime);
+      if (Number.isNaN(reservationDate.getTime())) {
+        return false;
+      }
       const zonedDate = toZonedTime(reservationDate, restaurantConfig?.timezone || 'UTC');
       const reservationDateStr = format(zonedDate, 'yyyy-MM-dd');
-      
       return reservationDateStr === dayString;
     });
     

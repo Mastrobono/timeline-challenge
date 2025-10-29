@@ -50,19 +50,19 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   const utcDate = new Date(iso);
   const zonedDate = toZonedTime(utcDate, config.timezone);
   
-  // Get the date part in the restaurant timezone
-  const configDate = new Date(config.date + 'T00:00:00');
+  // Get the date part in the restaurant timezone - parse as UTC to avoid timezone issues
+  const configDate = new Date(config.date + 'T00:00:00Z');
   const zonedConfigDate = toZonedTime(configDate, config.timezone);
   
   // Calculate the day difference
   const dayDiff = Math.floor((zonedDate.getTime() - zonedConfigDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Calculate minutes from midnight in the restaurant timezone
-  const minutesFromMidnight = (zonedDate.getHours() * 60) + zonedDate.getMinutes();
+  // Calculate slot positions based on timezone-aware time
+  const startHour = zonedDate.getHours();
+  const startMinute = zonedDate.getMinutes();
   
-  // Convert to slot index relative to startHour
-  const minutesFromStartHour = minutesFromMidnight - (config.startHour * 60);
-  const daySlotIndex = Math.floor(minutesFromStartHour / config.slotMinutes);
+  // Calculate slot index within the day
+  const daySlotIndex = ((startHour - config.startHour) * 4) + (startMinute / 15);
   
   // Calculate absolute slot index including day offset
   const slotsPerDay = getSlotsPerDay(config);

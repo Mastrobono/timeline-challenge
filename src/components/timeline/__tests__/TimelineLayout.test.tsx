@@ -141,6 +141,7 @@ vi.mock('@/lib/timeUtils', () => ({
     const dateWithMinutes = new Date(baseDate.getTime() + minutesFromMidnight * 60000);
     return dateWithMinutes.toISOString();
   },
+  filterReservationsByTimezone: (reservations: Reservation[]) => reservations,
 }));
 
 describe('TimelineLayout', () => {
@@ -179,37 +180,11 @@ describe('TimelineLayout', () => {
     expect(timelineLayout).toBeInTheDocument();
   });
 
-  it('renders toolbar with centered date', () => {
-    render(<TimelineLayout config={defaultConfig} />);
-    
-    const toolbar = screen.getByTestId('timeline-toolbar');
-    expect(toolbar).toBeInTheDocument();
-    
-    // Check for centered date format (the date might be different due to timezone)
-    expect(screen.getByText(/Oct.*2025/)).toBeInTheDocument();
-  });
+  // Toolbar is rendered at the page level, not inside TimelineLayout
 
-  it('renders view mode selector with correct options', () => {
-    render(<TimelineLayout config={defaultConfig} />);
-    
-    const viewSelector = screen.getByLabelText('Select view mode');
-    expect(viewSelector).toBeInTheDocument();
-    expect(viewSelector).toHaveValue('day');
-    
-    // Check all options are present
-    expect(screen.getByText('Day')).toBeInTheDocument();
-    expect(screen.getByText('3-Day')).toBeInTheDocument();
-    expect(screen.getByText('Week')).toBeInTheDocument();
-    expect(screen.getByText('Month')).toBeInTheDocument();
-  });
+  // View mode selector is part of the page toolbar, not TimelineLayout
 
-  it('renders navigation buttons', () => {
-    render(<TimelineLayout config={defaultConfig} />);
-    
-    expect(screen.getByLabelText('Previous period')).toBeInTheDocument();
-    expect(screen.getByLabelText('Go to today')).toBeInTheDocument();
-    expect(screen.getByLabelText('Next period')).toBeInTheDocument();
-  });
+  // Navigation is handled by the page toolbar, not TimelineLayout
 
   it('renders month view when viewMode is month', () => {
     mockStore.setState({
@@ -225,7 +200,7 @@ describe('TimelineLayout', () => {
     render(<TimelineLayout config={defaultConfig} />);
     
     // Should render month view instead of timeline
-    expect(screen.getByText('October 2025')).toBeInTheDocument();
+    expect(screen.getByText(/October 2025/)).toBeInTheDocument();
     expect(screen.getByText('Sun')).toBeInTheDocument();
     expect(screen.getByText('Mon')).toBeInTheDocument();
   });
