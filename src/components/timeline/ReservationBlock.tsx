@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { PencilIcon, InformationCircleIcon, UsersIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, InformationCircleIcon, UsersIcon, AdjustmentsHorizontalIcon, DocumentDuplicateIcon, TrashIcon } from '@heroicons/react/24/solid';
 import type { Reservation, TimelineConfig, DragState, Table } from '@/types';
 import { STATUS_COLORS, PRIORITY_BADGES } from '@/lib/constants';
 
@@ -15,10 +15,12 @@ interface ReservationBlockProps {
   table: Table;
   editingReservation?: string | null;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  onDuplicateClick?: (reservation: Reservation) => void;
+  onDeleteClick?: (reservation: Reservation) => void;
 }
 
 
-export default function ReservationBlock({ reservation, config, dragState, table, editingReservation, onEditClick }: ReservationBlockProps) {
+export default function ReservationBlock({ reservation, config, dragState, table, editingReservation, onEditClick, onDuplicateClick, onDeleteClick }: ReservationBlockProps) {
   const { startTime, endTime, customer, partySize, priority } = reservation;
   const [showTooltip, setShowTooltip] = useState(false);
   const blockRef = useRef<HTMLDivElement>(null);
@@ -123,29 +125,29 @@ export default function ReservationBlock({ reservation, config, dragState, table
   // For week view, only show reservations within the current week
   const maxVisibleDays = config.viewMode === 'week' ? 7 : config.viewMode === '3-day' ? 3 : 1;
   if (dayDiff < 0 || dayDiff >= maxVisibleDays) {
-    console.log('ReservationBlock - Skipping reservation outside visible range:', {
-      reservationId: reservation.id,
-      dayDiff,
-      maxVisibleDays,
-      viewMode: config.viewMode
-    });
+    // console.log('ReservationBlock - Skipping reservation outside visible range:', {
+    //   reservationId: reservation.id,
+    //   dayDiff,
+    //   maxVisibleDays,
+    //   viewMode: config.viewMode
+    // });
     return null;
   }
   
-  console.log('ReservationBlock - Position calculation:', {
-    reservationId: reservation.id,
-    startTime,
-    endTime,
-    dayDiff,
-    slotsPerDay,
-    dayStartSlot,
-    dayEndSlot,
-    startSlot,
-    endSlot,
-    configDate: config.date,
-    startZonedDate: startZoned.toISOString().split('T')[0],
-    endZonedDate: endZoned.toISOString().split('T')[0]
-  });
+  // console.log('ReservationBlock - Position calculation:', {
+  //   reservationId: reservation.id,
+  //   startTime,
+  //   endTime,
+  //   dayDiff,
+  //   slotsPerDay,
+  //   dayStartSlot,
+  //   dayEndSlot,
+  //   startSlot,
+  //   endSlot,
+  //   configDate: config.date,
+  //   startZonedDate: startZoned.toISOString().split('T')[0],
+  //   endZonedDate: endZoned.toISOString().split('T')[0]
+  // });
   
   // Calculate position and width
   const left = startSlot * config.slotWidth;
@@ -309,6 +311,34 @@ export default function ReservationBlock({ reservation, config, dragState, table
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <PencilIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {onDuplicateClick && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicateClick(reservation);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded user-select-none cursor-pointer"
+                  title="Duplicate reservation"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {onDeleteClick && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteClick(reservation);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded user-select-none cursor-pointer"
+                  title="Delete reservation"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <TrashIcon className="w-3.5 h-3.5" />
                 </button>
               )}
               <button

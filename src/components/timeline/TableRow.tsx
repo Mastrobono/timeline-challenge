@@ -20,10 +20,12 @@ interface TableRowProps {
   viewMode?: 'day' | '3-day' | 'week' | 'month';
   onSlotClick?: (table: Table, startTime: string) => void;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  onDuplicateClick?: (reservation: Reservation) => void;
+  onDeleteClick?: (reservation: Reservation) => void;
   onCreateReservation?: (table: Table, startTime: string, endTime: string) => void;
 }
 
-export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, viewMode = 'day', onSlotClick, onEditClick, onCreateReservation }: TableRowProps) {
+export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, viewMode = 'day', onSlotClick, onEditClick, onDuplicateClick, onDeleteClick, onCreateReservation }: TableRowProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: table.id,
   });
@@ -48,30 +50,20 @@ export default function TableRow({ table, reservations, config, dragState, selec
    * Calculates the exact start time based on the click position
    */
   const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log('TableRow - handleSlotClick triggered:', {
-      tableId: table.id,
-      offsetX: e.nativeEvent.offsetX,
-      target: e.target,
-      currentTarget: e.currentTarget,
-      isSameTarget: e.target === e.currentTarget
-    });
     
     // Prevent event conflicts - only handle clicks directly on the empty row
     if (e.target !== e.currentTarget) {
-      console.log('TableRow - Click ignored: target !== currentTarget');
       return;
     }
 
     // Prevent click if we just finished dragging
     if (hasDragged) {
-      console.log('TableRow - Click ignored: hasDragged = true');
       setHasDragged(false);
       return;
     }
 
     // Only proceed if onSlotClick handler is provided
     if (!onSlotClick) {
-      console.log('TableRow - Click ignored: no onSlotClick handler');
       return;
     }
 
@@ -83,24 +75,8 @@ export default function TableRow({ table, reservations, config, dragState, selec
     const dayClickX = clickX - (dayIndex * dayWidth);
     const slotIndex = pxToSlot(dayClickX, config) + (dayIndex * slotsPerDay);
     
-    console.log('TableRow - Slot calculation:', {
-      clickX,
-      slotsPerDay,
-      dayWidth,
-      dayIndex,
-      dayClickX,
-      slotIndex,
-      configSlotWidth: config.slotWidth
-    });
-    
     // Convert slot index to ISO timestamp
     const startTime = slotToIso(slotIndex, config, getDateForSlot(slotIndex));
-    
-    console.log('TableRow - Final result:', {
-      slotIndex,
-      startTime,
-      targetDate: getDateForSlot(slotIndex)
-    });
     
     // Call the onSlotClick handler with table and startTime
     onSlotClick(table, startTime);
@@ -174,18 +150,6 @@ export default function TableRow({ table, reservations, config, dragState, selec
       
       const startTime = slotToIso(startSlotIndex, config, getDateForSlot(startSlotIndex));
       const endTime = slotToIso(finalEndSlotIndex, config, getDateForSlot(finalEndSlotIndex));
-      
-      console.log('TableRow - Creating reservation:', {
-        tableId: table.id,
-        startSlotIndex,
-        endSlotIndex: finalEndSlotIndex,
-        startTime,
-        endTime,
-        startDate: getDateForSlot(startSlotIndex),
-        endDate: getDateForSlot(finalEndSlotIndex),
-        slotsPerDay: getSlotsPerDay(config),
-        dayIndex: Math.floor(startSlotIndex / getSlotsPerDay(config))
-      });
       
       // Call the onCreateReservation handler
       onCreateReservation(table, startTime, endTime);
@@ -278,6 +242,8 @@ export default function TableRow({ table, reservations, config, dragState, selec
             table={table}
             editingReservation={editingReservation}
             onEditClick={onEditClick}
+            onDuplicateClick={onDuplicateClick}
+            onDeleteClick={onDeleteClick}
           />
         ))}
       </div>

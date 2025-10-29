@@ -1,17 +1,18 @@
 import { addDays, addMinutes } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import type { Table, Sector, Reservation, RestaurantConfig } from '@/types';
+import type { Table, Sector, Reservation, RestaurantConfig, ReservationStatus } from '@/types';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 
 /**
  * Generate reservations dynamically in the selected timezone
+ * Now generates exactly 10 reservations per day for 3 months (90 days)
  */
 export function generateReservationsInTimezone(
   tables: Table[],
   sectors: Sector[],
   restaurantConfig: RestaurantConfig,
   timezone: string,
-  count: number = 50
+  count: number = 900 // 10 reservations per day × 90 days
 ): Reservation[] {
   const today = new Date();
   
@@ -21,29 +22,25 @@ export function generateReservationsInTimezone(
   const slotsPerHour = 60 / slotMinutes;
   const totalSlotsPerDay = (endHour - startHour) * slotsPerHour;
   
+  // Generate exactly 10 reservations per day for 90 days (3 months)
+  const reservationsPerDay = 10;
+  const totalDays = 90;
+  const reservations: Reservation[] = [];
+  
   // Track occupied slots per table per day to avoid conflicts
   const occupiedSlots: Record<string, Set<number>> = {};
   
-  // Generate more reservations than needed to account for filtering
-  const targetCount = count;
-  const generateCount = Math.ceil(count * 2); // Generate 100% more to account for filtering
-  const reservations: Reservation[] = [];
+  // Create realistic customer data with some VIP customers and preferred sectors
+  const customerData = generateRealisticCustomerData();
   
-  // Calculate total available slots across all tables and days
-  const totalSlotsPerTablePerDay = totalSlotsPerDay;
-  const totalTables = tables.length;
-  const totalDays = count > 100 ? 14 : 7; // Use 2 weeks for large datasets
-  const totalAvailableSlots = totalSlotsPerTablePerDay * totalTables * totalDays;
-  
-  // Generate more reservations than needed
-  for (let i = 0; i < generateCount; i++) {
-    
-    const table = tables[Math.floor(Math.random() * tables.length)];
-    
-    // Extend day range for large datasets
-    const maxDays = targetCount > 100 ? 14 : 7; // Use 2 weeks for large datasets
-    const dayOffset = Math.floor(Math.random() * maxDays); // 0 to maxDays-1 days from today
+  // Generate reservations day by day
+  for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
     const reservationDate = addDays(today, dayOffset);
+    
+    // Generate exactly 10 reservations for this day
+    for (let reservationIndex = 0; reservationIndex < reservationsPerDay; reservationIndex++) {
+      // Select a random table
+    const table = tables[Math.floor(Math.random() * tables.length)];
     
     // Create a unique key for this table and day
     const tableDayKey = `${table.id}-${dayOffset}`;
@@ -53,7 +50,7 @@ export function generateReservationsInTimezone(
     
     // Find available time slots for this table and day
     const availableSlots: number[] = [];
-    for (let hour = startHour; hour < endHour; hour++) {
+      for (let hour = startHour; hour < endHour - 1; hour++) { // -1 to ensure we have room for duration
       for (let minute = 0; minute < 60; minute += slotMinutes) {
         const slotIndex = ((hour - startHour) * slotsPerHour) + (minute / slotMinutes);
         if (!occupiedSlots[tableDayKey].has(slotIndex)) {
@@ -62,210 +59,527 @@ export function generateReservationsInTimezone(
       }
     }
     
-    // If no available slots, skip this reservation
+      // If no available slots, try a different table
     if (availableSlots.length === 0) {
-      continue;
-    }
-    
-    // Pick a random available slot
-    const startSlotIndex = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+        // Try other tables for this day
+        let foundSlot = false;
+        for (const otherTable of tables) {
+          const otherTableDayKey = `${otherTable.id}-${dayOffset}`;
+          if (!occupiedSlots[otherTableDayKey]) {
+            occupiedSlots[otherTableDayKey] = new Set();
+          }
+          
+          const otherAvailableSlots: number[] = [];
+          for (let hour = startHour; hour < endHour - 1; hour++) {
+            for (let minute = 0; minute < 60; minute += slotMinutes) {
+              const slotIndex = ((hour - startHour) * slotsPerHour) + (minute / slotMinutes);
+              if (!occupiedSlots[otherTableDayKey].has(slotIndex)) {
+                otherAvailableSlots.push(slotIndex);
+              }
+            }
+          }
+          
+          if (otherAvailableSlots.length > 0) {
+            const startSlotIndex = otherAvailableSlots[Math.floor(Math.random() * otherAvailableSlots.length)];
+            const durationSlots = Math.ceil(90 / slotMinutes); // 90 minutes duration
+            const endSlotIndex = startSlotIndex + durationSlots;
+            
+            // Mark slots as occupied
+            for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+              occupiedSlots[otherTableDayKey].add(slot);
+            }
+            
+            // Create reservation
     const startHourSimple = startHour + Math.floor(startSlotIndex / slotsPerHour);
     const startMinuteSimple = (startSlotIndex % slotsPerHour) * slotMinutes;
-    
-    // Calculate max duration to ensure reservation ends before closing time
-    const maxDurationMinutes = (endHour - startHourSimple) * 60 - startMinuteSimple;
-    
-    // Adjust duration based on how many reservations we need
-    let minDurationMinutes, maxDurationMinutesAdjusted;
-    if (targetCount > 100) {
-      // For large datasets, use shorter durations to fit more reservations
-      minDurationMinutes = 30; // Minimum 30 minutes
-      maxDurationMinutesAdjusted = Math.min(90, maxDurationMinutes); // Max 1.5 hours
-    } else {
-      // For smaller datasets, use normal durations
-      minDurationMinutes = 60; // Minimum 1 hour
-      maxDurationMinutesAdjusted = Math.min(180, maxDurationMinutes); // Max 3 hours
-    }
-    
-    const durationMinutesSimple = Math.max(
-      minDurationMinutes,
-      Math.min(
-        minDurationMinutes + Math.floor(Math.random() * Math.max(0, maxDurationMinutesAdjusted - minDurationMinutes)),
-        maxDurationMinutesAdjusted
-      )
-    );
-    
-    // Calculate end slot and mark slots as occupied
-    const endSlotIndex = startSlotIndex + Math.ceil(durationMinutesSimple / slotMinutes);
-    
-    // Ensure endSlotIndex is valid and after startSlotIndex
-    if (endSlotIndex <= startSlotIndex) {
-      console.log('⚠️ Invalid reservation duration, skipping:', {
-        startSlotIndex,
-        endSlotIndex,
-        durationMinutesSimple,
-        slotMinutes
-      });
-      continue;
-    }
-    
-    for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
-      occupiedSlots[tableDayKey].add(slot);
-    }
-    
-    // Create the reservation time in the target timezone
+            const durationMinutesSimple = durationSlots * slotMinutes;
+            
     const reservationDateTime = new Date(reservationDate);
     reservationDateTime.setHours(startHourSimple, startMinuteSimple, 0, 0);
     
-    // Convert FROM the target timezone TO UTC
     const utcStartTime = fromZonedTime(reservationDateTime, timezone);
     const utcEndTime = addMinutes(utcStartTime, durationMinutesSimple);
     
-    // Validate that end time is after start time
-    if (utcEndTime <= utcStartTime) {
-      console.log('⚠️ Invalid reservation times, skipping:', {
-        utcStartTime: utcStartTime.toISOString(),
-        utcEndTime: utcEndTime.toISOString(),
-        durationMinutesSimple
-      });
-      continue;
-    }
-    
-    console.log('🕐 Reservation Time Generation:', {
-      timezone,
-      localTime: `${startHourSimple}:${startMinuteSimple.toString().padStart(2, '0')}`,
-      utcStartTime: utcStartTime.toISOString(),
-      utcEndTime: utcEndTime.toISOString(),
-      zonedBack: toZonedTime(utcStartTime, timezone).getHours() + ':' + toZonedTime(utcStartTime, timezone).getMinutes().toString().padStart(2, '0')
-    });
+            const customer = customerData[Math.floor(Math.random() * customerData.length)];
     
     const reservation: Reservation = {
-      id: `res-${Date.now()}-${i}`,
-      tableId: table.id,
-      customer: {
-        name: `Customer ${i + 1}`,
-        phone: `+54-9-${Math.floor(Math.random() * 90000000) + 10000000}`,
-        email: `customer${i + 1}@example.com`,
-        notes: Math.random() > 0.7 ? `Special request ${i + 1}` : undefined
-      },
-      partySize: Math.floor(Math.random() * (table.capacity.max - table.capacity.min + 1)) + table.capacity.min,
+              id: `res-${dayOffset}-${reservationIndex}`,
+              tableId: otherTable.id,
+              customer: customer.customer,
+              partySize: Math.floor(Math.random() * (otherTable.capacity.max - otherTable.capacity.min + 1)) + otherTable.capacity.min,
       startTime: utcStartTime.toISOString(),
       endTime: utcEndTime.toISOString(),
       durationMinutes: durationMinutesSimple,
-      status: Math.random() > 0.2 ? 'CONFIRMED' : 'PENDING',
-      priority: Math.random() > 0.8 ? 'VIP' : Math.random() > 0.6 ? 'LARGE_GROUP' : 'STANDARD',
-      notes: Math.random() > 0.5 ? `Reservation notes ${i + 1}` : undefined,
+      // Generate varied statuses
+      status: (() => {
+        const statusOptions: ReservationStatus[] = ['CONFIRMED', 'PENDING', 'SEATED', 'FINISHED', 'CANCELLED'];
+        const statusWeights = [0.6, 0.15, 0.1, 0.1, 0.05]; // CONFIRMED most common, CANCELLED least common
+        const random = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < statusOptions.length; i++) {
+          cumulative += statusWeights[i];
+          if (random <= cumulative) {
+            return statusOptions[i];
+          }
+        }
+        return 'CONFIRMED' as ReservationStatus; // fallback
+      })(),
+              priority: customer.priority,
+              notes: customer.notes,
+              preferredSectorId: customer.preferredSectorId,
       source: 'web',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
     
     reservations.push(reservation);
+            foundSlot = true;
+            break;
+          }
+        }
+        
+        if (!foundSlot) {
+      continue;
+    }
+      } else {
+        // Use the original table
+        const startSlotIndex = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+        const durationSlots = Math.ceil(90 / slotMinutes); // 90 minutes duration
+        const endSlotIndex = startSlotIndex + durationSlots;
+    
+        // Mark slots as occupied
+    for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+      occupiedSlots[tableDayKey].add(slot);
+    }
+    
+        // Create reservation
+        const startHourSimple = startHour + Math.floor(startSlotIndex / slotsPerHour);
+        const startMinuteSimple = (startSlotIndex % slotsPerHour) * slotMinutes;
+        const durationMinutesSimple = durationSlots * slotMinutes;
+        
+    const reservationDateTime = new Date(reservationDate);
+    reservationDateTime.setHours(startHourSimple, startMinuteSimple, 0, 0);
+    
+    const utcStartTime = fromZonedTime(reservationDateTime, timezone);
+    const utcEndTime = addMinutes(utcStartTime, durationMinutesSimple);
+    
+        const customer = customerData[Math.floor(Math.random() * customerData.length)];
+    
+    const reservation: Reservation = {
+          id: `res-${dayOffset}-${reservationIndex}`,
+      tableId: table.id,
+          customer: customer.customer,
+      partySize: Math.floor(Math.random() * (table.capacity.max - table.capacity.min + 1)) + table.capacity.min,
+      startTime: utcStartTime.toISOString(),
+      endTime: utcEndTime.toISOString(),
+      durationMinutes: durationMinutesSimple,
+          // Generate varied statuses
+          status: (() => {
+            const statusOptions: ReservationStatus[] = ['CONFIRMED', 'PENDING', 'SEATED', 'FINISHED', 'CANCELLED'];
+            const statusWeights = [0.6, 0.15, 0.1, 0.1, 0.05]; // CONFIRMED most common, CANCELLED least common
+            const random = Math.random();
+            let cumulative = 0;
+            for (let i = 0; i < statusOptions.length; i++) {
+              cumulative += statusWeights[i];
+              if (random <= cumulative) {
+                return statusOptions[i];
+              }
+            }
+            return 'CONFIRMED' as ReservationStatus; // fallback
+          })(),
+          priority: customer.priority,
+          notes: customer.notes,
+          preferredSectorId: customer.preferredSectorId,
+      source: 'web',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    reservations.push(reservation);
+      }
+    }
   }
   
-  // Now validate using the same logic as the store
-  const validation = ReservationValidationService.validateReservations(
-    reservations,
-    {
-      restaurantConfig,
-      tables,
-      existingReservations: []
-    }
-  );
+  return reservations;
+}
+
+/**
+ * Generate VALID reservations with proper validation
+ * This function ensures all generated reservations pass validation
+ */
+export function generateValidReservationsInTimezone(
+  tables: Table[],
+  sectors: Sector[],
+  restaurantConfig: RestaurantConfig,
+  timezone: string,
+  targetReservationsPerDay: number = 10,
+  totalDays: number = 90
+): Reservation[] {
+  const today = new Date();
+  const reservations: Reservation[] = [];
   
-  // If we don't have enough valid reservations, generate more
-  let finalReservations = validation.validReservations;
-  if (finalReservations.length < targetCount) {
-    // Try to generate more if we're still short
-    const shortfall = targetCount - finalReservations.length;
-    const additionalCount = Math.min(shortfall * 2, 100); // Generate up to 100 more
+  // Calculate available slots within operating hours
+  const { startHour, endHour } = restaurantConfig.operatingHours;
+  const slotMinutes = restaurantConfig.slotConfiguration.slotMinutes;
+  const slotsPerHour = 60 / slotMinutes;
+  
+  // Create realistic customer data
+  const customerData = generateRealisticCustomerData();
+  
+  // Generate reservations day by day with validation
+  for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
+    const reservationDate = addDays(today, dayOffset);
+    let validReservationsForDay = 0;
+    let attemptsForDay = 0;
+    const maxAttemptsPerDay = targetReservationsPerDay * 5; // Allow 5x attempts to find valid slots
     
-    if (additionalCount > 0) {
+    // Track occupied slots for this day
+    const occupiedSlots: Record<string, Set<number>> = {};
+    
+    // Try to generate exactly targetReservationsPerDay valid reservations for this day
+    while (validReservationsForDay < targetReservationsPerDay && attemptsForDay < maxAttemptsPerDay) {
+      attemptsForDay++;
       
-      const additionalReservations: Reservation[] = [];
-      for (let i = 0; i < additionalCount; i++) {
+      // Select a random table
         const table = tables[Math.floor(Math.random() * tables.length)];
-        const maxDays = targetCount > 100 ? 14 : 7; // Use same day range as main generation
-        const dayOffset = Math.floor(Math.random() * maxDays);
-        const reservationDate = addDays(today, dayOffset);
-        
-        // Create a simple reservation without conflict checking
-        const startHourSimple = startHour + Math.floor(Math.random() * (endHour - startHour - 1));
-        const startMinuteSimple = Math.floor(Math.random() * 4) * 15;
-        
-        // Use shorter durations for additional reservations to fit more
-        const durationMinutesSimple = targetCount > 100 
-          ? 30 + Math.floor(Math.random() * 60) // 30-90 minutes
-          : 60 + Math.floor(Math.random() * 120); // 1-3 hours
-        
+      
+      // Create a unique key for this table and day
+      const tableDayKey = `${table.id}-${dayOffset}`;
+      if (!occupiedSlots[tableDayKey]) {
+        occupiedSlots[tableDayKey] = new Set();
+      }
+      
+      // Find available time slots for this table and day
+      const availableSlots: number[] = [];
+      for (let hour = startHour; hour < endHour - 1; hour++) { // -1 to ensure we have room for duration
+        for (let minute = 0; minute < 60; minute += slotMinutes) {
+          const slotIndex = ((hour - startHour) * slotsPerHour) + (minute / slotMinutes);
+          if (!occupiedSlots[tableDayKey].has(slotIndex)) {
+            availableSlots.push(slotIndex);
+          }
+        }
+      }
+      
+      // If no available slots, try next attempt
+      if (availableSlots.length === 0) {
+        continue;
+      }
+      
+      // Select a random available slot
+      const startSlotIndex = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+      const durationSlots = Math.ceil(90 / slotMinutes); // 90 minutes duration
+      const endSlotIndex = startSlotIndex + durationSlots;
+      
+      // Check if we have enough consecutive slots
+      let hasConsecutiveSlots = true;
+      for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+        if (occupiedSlots[tableDayKey].has(slot)) {
+          hasConsecutiveSlots = false;
+          break;
+        }
+      }
+      
+      if (!hasConsecutiveSlots) {
+        continue; // Try next attempt
+      }
+      
+      // Mark slots as occupied
+      for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+        occupiedSlots[tableDayKey].add(slot);
+      }
+      
+      // Create reservation with proper timezone handling
+      const startHourSimple = startHour + Math.floor(startSlotIndex / slotsPerHour);
+      const startMinuteSimple = (startSlotIndex % slotsPerHour) * slotMinutes;
+      const durationMinutesSimple = durationSlots * slotMinutes;
+      
+      // Create date in the restaurant timezone
         const reservationDateTime = new Date(reservationDate);
         reservationDateTime.setHours(startHourSimple, startMinuteSimple, 0, 0);
         
+      // Convert to UTC using the restaurant timezone
         const utcStartTime = fromZonedTime(reservationDateTime, timezone);
         const utcEndTime = addMinutes(utcStartTime, durationMinutesSimple);
         
-        // Validate that end time is after start time
-        if (utcEndTime <= utcStartTime) {
-          console.log('⚠️ Invalid additional reservation times, skipping:', {
-            utcStartTime: utcStartTime.toISOString(),
-            utcEndTime: utcEndTime.toISOString(),
-            durationMinutesSimple
-          });
-          continue;
-        }
-        
-        console.log('🕐 Additional Reservation Time Generation:', {
-          timezone,
-          localTime: `${startHourSimple}:${startMinuteSimple.toString().padStart(2, '0')}`,
-          utcStartTime: utcStartTime.toISOString(),
-          utcEndTime: utcEndTime.toISOString(),
-          zonedBack: toZonedTime(utcStartTime, timezone).getHours() + ':' + toZonedTime(utcStartTime, timezone).getMinutes().toString().padStart(2, '0')
-        });
+      // Select customer data
+      const customer = customerData[Math.floor(Math.random() * customerData.length)];
+      
+      // Generate party size within table capacity
+      const partySize = Math.max(
+        table.capacity.min, 
+        Math.min(
+          table.capacity.max, 
+          Math.floor(Math.random() * (table.capacity.max - table.capacity.min + 1)) + table.capacity.min
+        )
+      );
         
         const reservation: Reservation = {
-          id: `res-${Date.now()}-${i + generateCount}`,
+        id: `res-${dayOffset}-${validReservationsForDay}-${Date.now()}`,
           tableId: table.id,
-          customer: {
-            name: `Customer ${i + generateCount + 1}`,
-            phone: `+54-9-${Math.floor(Math.random() * 90000000) + 10000000}`,
-            email: `customer${i + generateCount + 1}@example.com`,
-            notes: Math.random() > 0.7 ? `Special request ${i + generateCount + 1}` : undefined
-          },
-          partySize: Math.floor(Math.random() * (table.capacity.max - table.capacity.min + 1)) + table.capacity.min,
+        customer: customer.customer,
+        partySize: partySize,
           startTime: utcStartTime.toISOString(),
           endTime: utcEndTime.toISOString(),
           durationMinutes: durationMinutesSimple,
-          status: Math.random() > 0.2 ? 'CONFIRMED' : 'PENDING',
-          priority: Math.random() > 0.8 ? 'VIP' : Math.random() > 0.6 ? 'LARGE_GROUP' : 'STANDARD',
-          notes: Math.random() > 0.5 ? `Reservation notes ${i + generateCount + 1}` : undefined,
-          source: 'web',
+        status: 'CONFIRMED',
+        priority: customer.priority,
+        notes: customer.notes,
+        preferredSectorId: customer.preferredSectorId,
+        source: 'SEED',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         
-        additionalReservations.push(reservation);
-      }
-      
-      // Validate additional reservations
-      const additionalValidation = ReservationValidationService.validateReservations(
-        additionalReservations,
+      // Validate the reservation
+      try {
+        const validationResult = ReservationValidationService.validateReservation(
+          reservation,
         {
           restaurantConfig,
           tables,
-          existingReservations: finalReservations
+            existingReservations: [] // No existing reservations for seed generation
+          }
+        );
+        
+        if (validationResult.isValid) {
+          reservations.push(reservation);
+          validReservationsForDay++;
+        } else {
+          // If validation fails, unmark the slots
+          for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+            occupiedSlots[tableDayKey].delete(slot);
+          }
         }
-      );
-      
-      finalReservations = [...finalReservations, ...additionalValidation.validReservations];
+      } catch (error) {
+        // If validation throws an error, unmark the slots
+        for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
+          occupiedSlots[tableDayKey].delete(slot);
+        }
+      }
+    }
+    
+    // Log if we couldn't generate enough reservations for this day
+    if (validReservationsForDay < targetReservationsPerDay) {
+      console.warn(`Day ${dayOffset}: Only generated ${validReservationsForDay}/${targetReservationsPerDay} valid reservations`);
     }
   }
   
-  // Limit to target count
-  if (finalReservations.length > targetCount) {
-    finalReservations = finalReservations.slice(0, targetCount);
-  }
+  return reservations;
+}
+
+/**
+ * Generate realistic customer data with VIP customers and preferred sectors
+ */
+function generateRealisticCustomerData() {
+  const customers = [
+    // VIP Customers (rare, ~5%)
+    {
+      customer: {
+        name: 'Maria Rodriguez',
+        phone: '+54-9-11-1234-5678',
+        email: 'maria.rodriguez@email.com',
+        notes: 'VIP customer - prefers window tables'
+      },
+      priority: 'VIP' as const,
+      notes: 'VIP customer with special preferences',
+      preferredSectorId: 'sector-1' // Main Dining
+    },
+    {
+      customer: {
+        name: 'John Smith',
+        phone: '+1-555-123-4567',
+        email: 'john.smith@email.com',
+        notes: 'Regular VIP customer'
+      },
+      priority: 'VIP' as const,
+      notes: 'VIP customer - anniversary dinner',
+      preferredSectorId: 'sector-3' // Private Room
+    },
+    {
+      customer: {
+        name: 'Anna Kowalski',
+        phone: '+48-123-456-789',
+        email: 'anna.kowalski@email.com',
+        notes: 'VIP customer - dietary restrictions'
+      },
+      priority: 'VIP' as const,
+      notes: 'VIP customer with dietary requirements',
+      preferredSectorId: 'sector-2' // Terrace
+    },
+    
+    // Large Group Customers (~15%)
+    {
+      customer: {
+        name: 'Corporate Event Team',
+        phone: '+54-9-11-9876-5432',
+        email: 'events@company.com',
+        notes: 'Corporate events coordinator'
+      },
+      priority: 'LARGE_GROUP' as const,
+      notes: 'Corporate event - needs private space',
+      preferredSectorId: 'sector-3' // Private Room
+    },
+    {
+      customer: {
+        name: 'Family Reunion',
+        phone: '+54-9-11-5555-1234',
+        email: 'family@email.com',
+        notes: 'Large family gathering'
+      },
+      priority: 'LARGE_GROUP' as const,
+      notes: 'Family reunion - outdoor seating preferred',
+      preferredSectorId: 'sector-2' // Terrace
+    },
+    
+    // Standard Customers with Preferred Sectors (~20%)
+    {
+      customer: {
+        name: 'Carlos Mendez',
+        phone: '+54-9-11-4444-5678',
+        email: 'carlos.mendez@email.com',
+        notes: 'Prefers quiet dining'
+      },
+      priority: 'STANDARD' as const,
+      notes: 'Regular customer - prefers main dining',
+      preferredSectorId: 'sector-1' // Main Dining
+    },
+    {
+      customer: {
+        name: 'Sarah Johnson',
+        phone: '+1-555-987-6543',
+        email: 'sarah.johnson@email.com',
+        notes: 'Loves outdoor dining'
+      },
+      priority: 'STANDARD' as const,
+      notes: 'Regular customer - terrace lover',
+      preferredSectorId: 'sector-2' // Terrace
+    },
+    {
+      customer: {
+        name: 'David Chen',
+        phone: '+86-138-0013-8000',
+        email: 'david.chen@email.com',
+        notes: 'Business meetings'
+      },
+      priority: 'STANDARD' as const,
+      notes: 'Business customer - needs privacy',
+      preferredSectorId: 'sector-3' // Private Room
+    },
+    
+    // Standard Customers without Preferred Sectors (~60%)
+    {
+      customer: {
+        name: 'Lisa Brown',
+        phone: '+44-20-7946-0958',
+        email: 'lisa.brown@email.com',
+        notes: 'First time visitor'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Michael Davis',
+        phone: '+61-2-9374-4000',
+        email: 'michael.davis@email.com',
+        notes: 'Tourist from Australia'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Elena Petrov',
+        phone: '+7-495-123-4567',
+        email: 'elena.petrov@email.com',
+        notes: 'Visiting from Russia'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Ahmed Hassan',
+        phone: '+971-4-123-4567',
+        email: 'ahmed.hassan@email.com',
+        notes: 'Business traveler'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Sophie Martin',
+        phone: '+33-1-42-86-83-26',
+        email: 'sophie.martin@email.com',
+        notes: 'Food blogger'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Roberto Silva',
+        phone: '+55-11-9876-5432',
+        email: 'roberto.silva@email.com',
+        notes: 'Regular customer'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Jennifer Lee',
+        phone: '+82-2-1234-5678',
+        email: 'jennifer.lee@email.com',
+        notes: 'Korean tourist'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Giuseppe Rossi',
+        phone: '+39-06-1234-5678',
+        email: 'giuseppe.rossi@email.com',
+        notes: 'Italian food enthusiast'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'Emma Wilson',
+        phone: '+44-161-234-5678',
+        email: 'emma.wilson@email.com',
+        notes: 'Student group'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    },
+    {
+      customer: {
+        name: 'James Taylor',
+        phone: '+1-416-123-4567',
+        email: 'james.taylor@email.com',
+        notes: 'Canadian visitor'
+      },
+      priority: 'STANDARD' as const,
+      notes: undefined,
+      preferredSectorId: undefined
+    }
+  ];
   
-  return finalReservations;
+  return customers;
 }
 
 /**
@@ -367,13 +681,6 @@ export function generateRestaurantConfig(timezone: string): RestaurantConfig {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  
-  console.log('🍽️ Generated Restaurant Config:', {
-    name: config.name,
-    timezone: config.timezone,
-    hours: `${config.operatingHours.startHour}:00 - ${config.operatingHours.endHour}:00`,
-    inputTimezone: timezone
-  });
   
   return config;
 }

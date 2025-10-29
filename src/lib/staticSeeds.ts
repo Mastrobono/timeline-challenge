@@ -28,14 +28,6 @@ export async function loadStaticSeed(): Promise<StaticSeedData> {
     
     const seedData: StaticSeedData = await response.json();
     
-    console.log(`📁 Loaded ${seedData.metadata.type} seed:`, {
-      timezone: seedData.metadata.timezone,
-      reservationsCount: seedData.metadata.reservationsCount,
-      tablesCount: seedData.metadata.tablesCount,
-      sectorsCount: seedData.metadata.sectorsCount,
-      generatedAt: seedData.metadata.generatedAt
-    });
-    
     return seedData;
   } catch (error) {
     console.error('❌ Error loading static seed:', error);

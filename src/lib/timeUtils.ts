@@ -21,15 +21,6 @@ export function slotToIso(slotIndex: number, config: TimelineConfig, baseDate?: 
   // Use baseDate if provided, otherwise use config.date
   const targetDate = baseDate || config.date;
   
-  console.log('slotToIso - Conversion:', {
-    slotIndex,
-    slotsPerDay,
-    dayIndex,
-    daySlotIndex,
-    targetDate,
-    configDate: config.date
-  });
-  
   // Calculate the actual hour and minute for this slot
   // daySlotIndex is relative to startHour, so we need to add startHour to get the actual hour
   const minutesFromMidnight = slotToMinutes(daySlotIndex, config);
@@ -47,12 +38,6 @@ export function slotToIso(slotIndex: number, config: TimelineConfig, baseDate?: 
   // Convert FROM the target timezone TO UTC
   // This treats the localDate as if it were in the target timezone
   const utcDate = fromZonedTime(localDate, config.timezone);
-  
-  console.log('slotToIso - Result:', {
-    timeString,
-    dateTimeString,
-    utcDate: utcDate.toISOString()
-  });
   
   return utcDate.toISOString();
 }
@@ -72,13 +57,6 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   // Calculate the day difference
   const dayDiff = Math.floor((zonedDate.getTime() - zonedConfigDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  console.log('isoToSlotIndex - Conversion:', {
-    iso,
-    configDate: config.date,
-    zonedDate: zonedDate.toISOString().split('T')[0],
-    dayDiff
-  });
-  
   // Calculate minutes from midnight in the restaurant timezone
   const minutesFromMidnight = (zonedDate.getHours() * 60) + zonedDate.getMinutes();
   
@@ -89,14 +67,6 @@ export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
   // Calculate absolute slot index including day offset
   const slotsPerDay = getSlotsPerDay(config);
   const absoluteSlotIndex = daySlotIndex + (dayDiff * slotsPerDay);
-  
-  console.log('isoToSlotIndex - Result:', {
-    minutesFromMidnight,
-    minutesFromStartHour,
-    daySlotIndex,
-    slotsPerDay,
-    absoluteSlotIndex
-  });
   
   return Math.max(0, absoluteSlotIndex);
 }

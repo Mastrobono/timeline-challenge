@@ -218,12 +218,12 @@ describe('Timeline Integration Tests', () => {
     const mockGoToNextPeriod = vi.fn();
     const mockGoToPrevPeriod = vi.fn();
     const mockGoToToday = vi.fn();
-    
-    mockStore.setState({ 
+    mockStore.setState((state: any) => ({
+      ...state,
       goToNextPeriod: mockGoToNextPeriod,
       goToPrevPeriod: mockGoToPrevPeriod,
       goToToday: mockGoToToday
-    });
+    }));
 
     render(<TimelineLayout config={defaultConfig} />);
 

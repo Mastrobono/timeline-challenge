@@ -48,6 +48,7 @@ export interface TimelineActions {
     restaurantConfig: RestaurantConfig;
   }) => void;
   bulkImportReservations: (reservations: Reservation[]) => void;
+  replaceAllReservations: (reservations: Reservation[]) => void;
   clearAllReservations: () => void;
 }
 
@@ -467,7 +468,6 @@ const useTimelineStore = create<TimelineStore>()(
       },
 
       setRestaurantConfig: (config: RestaurantConfig) => {
-        console.log('🏪 Store Setting Restaurant Config:', config);
         set((state) => ({
           ...state,
           restaurantConfig: config,
@@ -569,6 +569,46 @@ const useTimelineStore = create<TimelineStore>()(
           // Add only valid reservations
           const newReservationsById = { ...state.reservationsById };
           const newReservationsByTable = { ...state.reservationsByTable };
+          
+          validation.validReservations.forEach(reservation => {
+            newReservationsById[reservation.id] = reservation;
+            
+            if (!newReservationsByTable[reservation.tableId]) {
+              newReservationsByTable[reservation.tableId] = [];
+            }
+            newReservationsByTable[reservation.tableId].push(reservation.id);
+          });
+          
+          return {
+            ...state,
+            reservationsById: newReservationsById,
+            reservationsByTable: newReservationsByTable,
+          };
+        });
+      },
+
+      // Replace all reservations (for CSV import)
+      replaceAllReservations: (reservations: Reservation[]) => {
+        set((state) => {
+          const tables = Object.values(state.tablesById);
+          const existingReservations = Object.values(state.reservationsById);
+          
+          // Validate new reservations
+          const validation = ReservationValidationService.validateReservations(
+            reservations,
+            {
+              restaurantConfig: state.restaurantConfig,
+              tables,
+              existingReservations: [] // Empty existing reservations for replacement
+            }
+          );
+          
+          // Log validation results
+          ReservationValidationService.logValidationResults();
+          
+          // Create new reservations maps
+          const newReservationsById: Record<string, Reservation> = {};
+          const newReservationsByTable: Record<string, string[]> = {};
           
           validation.validReservations.forEach(reservation => {
             newReservationsById[reservation.id] = reservation;

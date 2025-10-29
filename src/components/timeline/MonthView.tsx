@@ -1,7 +1,9 @@
 import React from 'react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import useTimelineStore from '@/store/useTimelineStore';
 import { ReservationFilterService } from '@/lib/reservationFilterService';
+import { filterReservationsByTimezone } from '@/lib/timeUtils';
 
 export default function MonthView() {
   const { ui, setVisibleDate, setViewMode, reservationsById, restaurantConfig } = useTimelineStore();
@@ -34,25 +36,36 @@ export default function MonthView() {
   // Add days of the month
   daysInMonth.forEach((day) => {
     const isToday = isSameDay(day, new Date());
+    
+    // Create date string directly without timezone conversion
+    // The day is already in local time, we just need the date part
     const dayString = format(day, 'yyyy-MM-dd');
     
-    // Calculate deterministic reservation count using centralized filter service
+    // Get all reservations and filter them properly
     const allReservations = Object.values(reservationsById);
-    const filteredReservations = ReservationFilterService.filterReservationsForMonthView(
-      allReservations,
-      dayString,
-      {
-        date: visibleDate,
-        startHour: restaurantConfig?.operatingHours.startHour || startHour,
-        endHour: restaurantConfig?.operatingHours.endHour || 23,
-        slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
-        slotWidth: 30,
-        timezone: restaurantConfig?.timezone || 'UTC',
-        viewMode: 'month',
-      },
-      restaurantConfig
-    );
     
+    // Filter reservations for this specific day
+    const dayReservations = allReservations.filter(reservation => {
+      // Convert UTC reservation time to restaurant timezone to get the correct date
+      const reservationDate = new Date(reservation.startTime);
+      const zonedDate = toZonedTime(reservationDate, restaurantConfig?.timezone || 'UTC');
+      const reservationDateStr = format(zonedDate, 'yyyy-MM-dd');
+      
+      return reservationDateStr === dayString;
+    });
+    
+    // Apply timezone filtering (same as TimelineLayout)
+    const config = {
+      date: dayString,
+      startHour: restaurantConfig?.operatingHours.startHour || 7,
+      endHour: restaurantConfig?.operatingHours.endHour || 19,
+      slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
+      slotWidth: 30,
+      timezone: restaurantConfig?.timezone || 'UTC',
+      viewMode: 'month' as const,
+    };
+    
+    const filteredReservations = filterReservationsByTimezone(dayReservations, config, restaurantConfig);
     const reservationCount = filteredReservations.length;
     
     const handleDayClick = () => {

@@ -49,6 +49,7 @@ export interface Reservation {
   status: ReservationStatus;
   priority: Priority;
   notes?: string;
+  preferredSectorId?: UUID; // Customer's preferred sector for auto-scheduling
   source?: string; // 'phone', 'web', 'walkin', 'app'
   createdAt: ISODateTime;
   updatedAt: ISODateTime;

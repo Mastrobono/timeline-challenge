@@ -59,7 +59,7 @@ export function hasConflict(
       return true;
     }
   }
-
+  
   return false;
 }
 

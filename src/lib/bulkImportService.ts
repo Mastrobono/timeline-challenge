@@ -1,6 +1,8 @@
-import type { Reservation } from '@/types';
+import type { Reservation, Table, Sector, TimelineConfig, RestaurantConfig } from '@/types';
 import useTimelineStore from '@/store/useTimelineStore';
+import { AutoSchedulingService } from '@/lib/autoSchedulingService';
 import Papa from 'papaparse';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 export interface BulkImportOptions {
   onProgress?: (current: number, total: number) => void;
@@ -13,6 +15,8 @@ export interface ImportResult {
   validCount: number;
   invalidCount: number;
   errors: string[];
+  autoAssignedCount?: number;
+  vipDetectedCount?: number;
 }
 
 /**
@@ -48,6 +52,34 @@ export interface ImportResult {
  */
 export class BulkImportService {
   private static store = useTimelineStore.getState();
+
+  /**
+   * Convert UTC time to restaurant timezone for CSV export
+   */
+  private static convertToRestaurantTimezone(utcTime: string, restaurantTimezone: string): string {
+    try {
+      const utcDate = new Date(utcTime);
+      const restaurantDate = toZonedTime(utcDate, restaurantTimezone);
+      return restaurantDate.toISOString();
+    } catch (error) {
+      console.warn('Failed to convert timezone, using original time:', error);
+      return utcTime;
+    }
+  }
+
+  /**
+   * Convert restaurant timezone time to UTC for storage
+   */
+  private static convertFromRestaurantTimezone(restaurantTime: string, restaurantTimezone: string): string {
+    try {
+      const restaurantDate = new Date(restaurantTime);
+      const utcDate = fromZonedTime(restaurantDate, restaurantTimezone);
+      return utcDate.toISOString();
+    } catch (error) {
+      console.warn('Failed to convert timezone, using original time:', error);
+      return restaurantTime;
+    }
+  }
 
   /**
    * Import reservations from an external API
@@ -107,8 +139,18 @@ export class BulkImportService {
     options: BulkImportOptions = {}
   ): Promise<ImportResult> {
     try {
+      // Check file size to prevent crashes
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('File too large. Maximum size is 10MB.');
+      }
+      
       const content = await this.readFileContent(file);
       const reservations = this.parseCSV(content);
+      
+      // Limit number of reservations to prevent crashes
+      if (reservations.length > 1000) {
+        throw new Error('Too many reservations. Maximum is 1000 per import.');
+      }
       
       return this.processReservations(reservations, options);
     } catch (error) {
@@ -124,7 +166,7 @@ export class BulkImportService {
   }
 
   /**
-   * Process reservations with validation and import to store
+   * Process reservations with validation, auto-scheduling, and import to store
    */
   private static processReservations(
     reservations: Reservation[],
@@ -140,17 +182,46 @@ export class BulkImportService {
         throw new Error('Store is empty. Please use Reset Small or Reset Large first to initialize tables and configuration.');
       }
       
-      this.store.bulkImportReservations(reservations);
+      // Get current data for auto-scheduling
+      const tables = Object.values(this.store.tablesById);
+      const sectors = Object.values(this.store.sectorsById);
+      const existingReservations = Object.values(this.store.reservationsById);
+      const config: TimelineConfig = {
+        date: this.store.ui.visibleDate,
+        startHour: this.store.ui.startHour,
+        endHour: this.store.restaurantConfig!.operatingHours.endHour,
+        slotMinutes: this.store.restaurantConfig!.slotConfiguration.slotMinutes,
+        timezone: this.store.restaurantConfig!.timezone,
+        slotWidth: this.store.ui.slotWidth,
+        viewMode: this.store.ui.viewMode
+      };
+      
+      // Process reservations with auto-scheduling
+      const processedReservations = this.processWithAutoScheduling(
+        reservations,
+        tables,
+        sectors,
+        existingReservations,
+        config,
+        this.store.restaurantConfig!
+      );
+      
+      // Replace all reservations (not add to existing)
+      this.store.replaceAllReservations(processedReservations);
       
       const allReservations = Object.values(this.store.reservationsById);
       const validCount = allReservations.length;
       const invalidCount = reservations.length - validCount;
+      const autoAssignedCount = processedReservations.filter(r => r.tableId).length;
+      const vipDetectedCount = processedReservations.filter(r => r.priority === 'VIP').length;
       
       const result: ImportResult = {
         success: true,
         validCount,
         invalidCount,
-        errors: []
+        errors: [],
+        autoAssignedCount,
+        vipDetectedCount
       };
       
       options.onComplete?.(validCount, invalidCount);
@@ -165,6 +236,72 @@ export class BulkImportService {
         errors: [errorMessage]
       };
     }
+  }
+  
+  /**
+   * Process reservations with auto-scheduling and VIP detection
+   */
+  private static processWithAutoScheduling(
+    reservations: Reservation[],
+    tables: Table[],
+    sectors: Sector[],
+    existingReservations: Reservation[],
+    config: TimelineConfig,
+    restaurantConfig: RestaurantConfig
+  ): Reservation[] {
+    const processedReservations: Reservation[] = [];
+    
+    // Process in batches to prevent memory issues
+    const batchSize = 50;
+    for (let i = 0; i < reservations.length; i += batchSize) {
+      const batch = reservations.slice(i, i + batchSize);
+      
+      // Simplified VIP detection for bulk processing
+      const reservationsWithVIP = batch.map(reservation => {
+        const isVIP = reservation.priority === 'VIP' || 
+                     (reservation.customer.email && reservation.customer.email.includes('vip')) ||
+                     (reservation.notes && reservation.notes.toLowerCase().includes('vip'));
+        
+        return {
+          ...reservation,
+          priority: isVIP ? 'VIP' as const : reservation.priority,
+          notes: isVIP ? 
+            `${reservation.notes || ''}\n[AI] VIP detected in bulk import`.trim() :
+            reservation.notes
+        };
+      });
+      
+      // Simplified table assignment for bulk processing
+      const reservationsWithTables = reservationsWithVIP.map(reservation => {
+        if (reservation.tableId) {
+          return reservation; // Already has table assigned
+        }
+        
+        try {
+          // Find a suitable table without complex optimization
+          const suitableTable = tables.find(table => 
+            reservation.partySize >= table.capacity.min && 
+            reservation.partySize <= table.capacity.max &&
+            (!reservation.preferredSectorId || table.sectorId === reservation.preferredSectorId)
+          );
+          
+          if (suitableTable) {
+            return {
+              ...reservation,
+              tableId: suitableTable.id
+            };
+          }
+        } catch (error) {
+          // If assignment fails, keep original reservation
+        }
+        
+        return reservation;
+      });
+      
+      processedReservations.push(...reservationsWithTables);
+    }
+    
+    return processedReservations;
   }
 
   /**
@@ -219,16 +356,39 @@ export class BulkImportService {
         reservation.customer = { 
           name: reservation.customer?.name || '', 
           phone: reservation.customer?.phone || '', 
-          email: rowData.customeremail || rowData.customer_email || rowData.email || '' 
+          email: rowData.customeremail || rowData.customer_email || rowData.email || '',
+          notes: reservation.customer?.notes || ''
+        };
+      }
+      if (rowData.customernotes || rowData.customer_notes || rowData.notes) {
+        reservation.customer = { 
+          name: reservation.customer?.name || '', 
+          phone: reservation.customer?.phone || '', 
+          email: reservation.customer?.email || '',
+          notes: rowData.customernotes || rowData.customer_notes || rowData.notes || ''
         };
       }
       if (rowData.partysize || rowData.party_size) reservation.partySize = parseInt(rowData.partysize || rowData.party_size) || 1;
-      if (rowData.starttime || rowData.start_time) reservation.startTime = rowData.starttime || rowData.start_time;
-      if (rowData.endtime || rowData.end_time) reservation.endTime = rowData.endtime || rowData.end_time;
+      if (rowData.starttime || rowData.start_time) {
+        const startTimeValue = rowData.starttime || rowData.start_time;
+        // Convert from restaurant timezone to UTC for storage
+        const store = useTimelineStore.getState();
+        const restaurantTimezone = store.restaurantConfig?.timezone || 'UTC';
+        reservation.startTime = this.convertFromRestaurantTimezone(startTimeValue, restaurantTimezone);
+      }
+      if (rowData.endtime || rowData.end_time) {
+        const endTimeValue = rowData.endtime || rowData.end_time;
+        // Convert from restaurant timezone to UTC for storage
+        const store = useTimelineStore.getState();
+        const restaurantTimezone = store.restaurantConfig?.timezone || 'UTC';
+        reservation.endTime = this.convertFromRestaurantTimezone(endTimeValue, restaurantTimezone);
+      }
       if (rowData.durationminutes || rowData.duration_minutes) reservation.durationMinutes = parseInt(rowData.durationminutes || rowData.duration_minutes) || 60;
       if (rowData.status) reservation.status = rowData.status as 'CONFIRMED' | 'PENDING' | 'SEATED' | 'FINISHED' | 'CANCELLED';
       if (rowData.priority) reservation.priority = rowData.priority as 'STANDARD' | 'VIP' | 'LARGE_GROUP';
       if (rowData.source) reservation.source = rowData.source;
+      if (rowData.preferredsectorid || rowData.preferred_sector_id) reservation.preferredSectorId = rowData.preferredsectorid || rowData.preferred_sector_id;
+      if (rowData.notes) reservation.notes = rowData.notes;
 
       // Set defaults
       reservation.id = reservation.id || `csv-${Date.now()}-${index}`;
@@ -246,9 +406,151 @@ export class BulkImportService {
       const now = new Date().toISOString();
       reservation.createdAt = reservation.createdAt || now;
       reservation.updatedAt = reservation.updatedAt || now;
+
       
       return reservation as Reservation;
     });
+  }
+  
+  /**
+   * Export reservations to CSV format
+   */
+  static exportReservationsToCSV(reservations: Reservation[]): string {
+    // Get restaurant timezone from store
+    const store = useTimelineStore.getState();
+    const restaurantTimezone = store.restaurantConfig?.timezone || 'UTC';
+
+    const csvData = reservations.map(reservation => {
+      // Convert UTC times to restaurant timezone for CSV export
+      const startTimeInRestaurantTz = this.convertToRestaurantTimezone(reservation.startTime, restaurantTimezone);
+      const endTimeInRestaurantTz = this.convertToRestaurantTimezone(reservation.endTime, restaurantTimezone);
+      
+      return {
+        id: reservation.id,
+        tableId: reservation.tableId,
+        customerName: reservation.customer.name,
+        customerPhone: reservation.customer.phone,
+        customerEmail: reservation.customer.email || '',
+        customerNotes: reservation.customer.notes || '',
+        partySize: reservation.partySize,
+        startTime: startTimeInRestaurantTz,
+        endTime: endTimeInRestaurantTz,
+        durationMinutes: reservation.durationMinutes,
+        status: reservation.status,
+        priority: reservation.priority,
+        notes: reservation.notes || '',
+        preferredSectorId: reservation.preferredSectorId || '',
+        source: reservation.source || 'web',
+        createdAt: reservation.createdAt,
+        updatedAt: reservation.updatedAt
+      };
+    });
+    
+    return Papa.unparse(csvData);
+  }
+  
+  /**
+   * Import reservations from CSV string (standalone version that doesn't require store)
+   */
+  static async importReservationsFromCSV(csvContent: string): Promise<ImportResult> {
+    try {
+      const parseResult = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim()
+      });
+      
+      if (parseResult.errors.length > 0) {
+        return {
+          success: false,
+          validCount: 0,
+          invalidCount: 0,
+          errors: parseResult.errors.map(error => `Parse error: ${error.message}`)
+        };
+      }
+      
+      const rawReservations = parseResult.data as any[];
+      const reservations: Reservation[] = rawReservations.map(row => ({
+        id: row.id || crypto.randomUUID(),
+        tableId: row.tableId,
+        customer: {
+          name: row.customerName || '',
+          phone: row.customerPhone || '',
+          email: row.customerEmail || undefined,
+          notes: row.customerNotes || undefined
+        },
+        partySize: parseInt(row.partySize) || 2,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        durationMinutes: parseInt(row.durationMinutes) || 120,
+        status: row.status || 'CONFIRMED',
+        priority: row.priority || 'STANDARD',
+        notes: row.notes || undefined,
+        preferredSectorId: row.preferredSectorId || undefined,
+        source: row.source || 'IMPORT',
+        createdAt: row.createdAt || new Date().toISOString(),
+        updatedAt: row.updatedAt || new Date().toISOString()
+      }));
+      
+      // Basic validation without store dependency
+      const validReservations: Reservation[] = [];
+      const errors: string[] = [];
+      
+      reservations.forEach((reservation, index) => {
+        try {
+          // Basic validation
+          if (!reservation.id || !reservation.tableId || !reservation.customer.name) {
+            errors.push(`Row ${index + 1}: Missing required fields (id, tableId, customerName)`);
+            return;
+          }
+          
+          if (!reservation.startTime || !reservation.endTime) {
+            errors.push(`Row ${index + 1}: Missing required time fields`);
+            return;
+          }
+          
+          if (reservation.partySize < 1 || reservation.partySize > 20) {
+            errors.push(`Row ${index + 1}: Invalid party size`);
+            return;
+          }
+          
+          // Validate dates
+          const startDate = new Date(reservation.startTime);
+          const endDate = new Date(reservation.endTime);
+          
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            errors.push(`Row ${index + 1}: Invalid date format`);
+            return;
+          }
+          
+          if (endDate <= startDate) {
+            errors.push(`Row ${index + 1}: End time must be after start time`);
+            return;
+          }
+          
+          validReservations.push(reservation);
+        } catch (error) {
+          errors.push(`Row ${index + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      });
+      
+      return {
+        success: validReservations.length > 0,
+        validCount: validReservations.length,
+        invalidCount: reservations.length - validReservations.length,
+        errors,
+        autoAssignedCount: 0,
+        vipDetectedCount: validReservations.filter(r => r.priority === 'VIP').length
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        validCount: 0,
+        invalidCount: 0,
+        errors: [`Import error: ${error instanceof Error ? error.message : 'Unknown error'}`]
+      };
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent, DragMoveEvent, DragStartEvent, rectIntersection } from '@dnd-kit/core';
 import TimelineLayout from '@/components/timeline/TimelineLayout';
 import ReservationDrawer from '@/components/timeline/ReservationDrawer';
@@ -11,12 +12,14 @@ import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
 import { useNotification } from '@/hooks/useNotification';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
+import AutoSchedulingService from '@/lib/autoSchedulingService';
 import { slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
 import { format, toZonedTime } from 'date-fns-tz';
 import type { TimelineConfig, Table, Reservation, ReservationStatus } from '@/types';
 
 
 export default function TimelinePage() {
+  const router = useRouter();
   const {
     reservationsById,
     restaurantConfig,
@@ -29,8 +32,64 @@ export default function TimelinePage() {
     sectorsById
   } = useTimelineStore();
 
-  // Hook para auto-inicialización en modo desarrollo
+  // Hook for auto-initialization
   const { isInitialized, isLoading: isInitializing, error: initError } = useAutoInitialize();
+
+  // Hook to detect screen size
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+  
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint is 1024px
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Update sidebar collapsed state based on screen size
+  useEffect(() => {
+    setSidebarCollapsed(!isLargeScreen);
+  }, [isLargeScreen]);
+
+  // Check if store has data, redirect to root if not
+  useEffect(() => {
+    // Only redirect if we're fully initialized and still don't have data
+    if (isInitialized && !isInitializing) {
+      const hasData = restaurantConfig && Object.keys(reservationsById).length > 0 && Object.keys(tablesById).length > 0;
+      if (!hasData) {
+        router.push('/');
+      }
+    }
+  }, [isInitialized, isInitializing, restaurantConfig, reservationsById, tablesById, router]);
+
+  // Listen for create reservation event from sidebar
+  useEffect(() => {
+    const handleCreateReservation = () => {
+      // Find the first available table for today
+      const today = new Date();
+      const tables = Object.values(tablesById);
+      if (tables.length > 0) {
+        const firstTable = tables[0];
+        const startTime = new Date(today);
+        startTime.setHours(19, 0, 0, 0); // Default to 7 PM
+        const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
+        
+        setDrawerState({
+          isOpen: true,
+          table: firstTable,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          reservation: null
+        });
+      }
+    };
+
+    window.addEventListener('createReservation', handleCreateReservation);
+    return () => window.removeEventListener('createReservation', handleCreateReservation);
+  }, [tablesById]);
 
   // Notification hook
   const { notification, showNotification, hideNotification } = useNotification();
@@ -54,15 +113,17 @@ export default function TimelinePage() {
   const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
 
   // Create timeline config - this will re-create when restaurantConfig changes
-  const config: TimelineConfig = useMemo(() => ({
-    date: ui.visibleDate,
-    startHour: restaurantConfig?.operatingHours.startHour || ui.startHour,
-    endHour: restaurantConfig?.operatingHours.endHour || 23,
-    slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
-    slotWidth: ui.slotWidth,
-    viewMode: ui.viewMode,
-    timezone: restaurantConfig?.timezone || 'UTC',
-  }), [ui.visibleDate, ui.startHour, ui.slotWidth, ui.viewMode, restaurantConfig]);
+  const config: TimelineConfig = useMemo(() => {
+    return {
+      date: ui.visibleDate,
+      startHour: restaurantConfig?.operatingHours.startHour || ui.startHour,
+      endHour: restaurantConfig?.operatingHours.endHour || 23,
+      slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
+      slotWidth: ui.slotWidth,
+      viewMode: ui.viewMode,
+      timezone: restaurantConfig?.timezone || 'UTC',
+    };
+  }, [ui.visibleDate, ui.startHour, ui.slotWidth, ui.viewMode, restaurantConfig]);
 
   // Get filtered reservations directly from the store instead of using callback
   const getFilteredReservations = useCallback(() => {
@@ -143,29 +204,29 @@ export default function TimelinePage() {
     });
   }, [config.slotWidth]);
 
-  // Mostrar loading mientras se inicializa en modo desarrollo
-  if (process.env.NODE_ENV === 'development' && !isInitialized) {
+  // Show loading while initializing
+  if (!isInitialized) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
+      <div className="h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Inicializando aplicación...</h2>
-          <p className="text-gray-600">Cargando datos del restaurante</p>
+          <h2 className="text-lg font-semibold text-gray-100 mb-2">Initializing application...</h2>
+          <p className="text-gray-100">Loading restaurant data</p>
         </div>
       </div>
     );
   }
 
-  // Mostrar error si hay problema en la inicialización
-  if (process.env.NODE_ENV === 'development' && initError) {
+  // Show error if there's an initialization problem
+  if (initError) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
+      <div className="h-screen flex items-center justify-center bg-gray-900">   
         <div className="text-center max-w-md">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Error de inicialización</h2>
-          <p className="text-gray-600 mb-4">{initError}</p>
+          <h2 className="text-lg font-semibold text-gray-100 mb-2">Initialization Error</h2>
+          <p className="text-gray-100 mb-4">{initError}</p>
           <p className="text-sm text-gray-500">
-            Asegúrate de que los static seeds estén generados ejecutando: npm run generate-static-seeds
+            Make sure static seeds are generated by running: npm run generate-static-seeds
           </p>
         </div>
       </div>
@@ -216,11 +277,17 @@ export default function TimelinePage() {
 
   // Drawer handlers
   const handleOpenCreateDrawer = (table: Table, startTime: string) => {
+    // Calculate default end time (2 hours after start time)
+    const startDate = new Date(startTime);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Add 2 hours
+    const endTime = endDate.toISOString();
+    
     setDrawerState({
       isOpen: true,
       table,
       startTime,
-      reservation: null
+      reservation: null,
+      endTime
     });
 
     // Set selected slot for visual feedback
@@ -232,16 +299,6 @@ export default function TimelinePage() {
 
   // Handle drag-to-create reservation
   const handleCreateReservation = (table: Table, startTime: string, endTime: string) => {
-    console.log('TimelinePage - handleCreateReservation:', {
-      tableId: table.id,
-      tableName: table.name,
-      startTime,
-      endTime,
-      startDate: startTime.split('T')[0],
-      endDate: endTime.split('T')[0],
-      configDate: config.date,
-      viewMode: config.viewMode
-    });
     
     // Create a preview reservation for UI feedback
     const previewReservation: Reservation = {
@@ -317,6 +374,118 @@ export default function TimelinePage() {
     setEditingReservation(null);
   };
 
+  // Handle duplicate reservation
+  const handleDuplicateReservation = (reservation: Reservation) => {
+    // Find the closest available slot for the duplicated reservation
+    const tables = Object.values(tablesById);
+    const sectors = Object.values(sectorsById);
+    const existingReservations = Object.values(reservationsById);
+    
+    // Try to find a slot as close as possible to the original time
+    const originalTime = new Date(reservation.startTime);
+    const searchWindows = [15, 30, 60, 120, 180]; // Search in 15min increments up to 3 hours
+    
+    let bestSlot = null;
+    let closestTimeDiff = Infinity;
+    
+    // Search for available slots in time windows around the original time
+    for (const windowMinutes of searchWindows) {
+      // Search after original time
+      const afterTime = new Date(originalTime.getTime() + windowMinutes * 60000);
+      const afterSlots = AutoSchedulingService.findNextAvailableSlots(
+        reservation.partySize,
+        afterTime.toISOString(),
+        reservation.durationMinutes,
+        tables,
+        sectors,
+        existingReservations,
+        config,
+        {
+          partySize: reservation.partySize,
+          durationMinutes: reservation.durationMinutes,
+          preferredTime: reservation.startTime,
+          searchWindows: [15], // Small search window
+          maxSuggestions: 1
+        }
+      );
+      
+      if (afterSlots.length > 0) {
+        const timeDiff = Math.abs(new Date(afterSlots[0].startTime).getTime() - originalTime.getTime());
+        if (timeDiff < closestTimeDiff) {
+          closestTimeDiff = timeDiff;
+          bestSlot = afterSlots[0];
+        }
+      }
+      
+      // Search before original time
+      const beforeTime = new Date(originalTime.getTime() - windowMinutes * 60000);
+      const beforeSlots = AutoSchedulingService.findNextAvailableSlots(
+        reservation.partySize,
+        beforeTime.toISOString(),
+        reservation.durationMinutes,
+        tables,
+        sectors,
+        existingReservations,
+        config,
+        {
+          partySize: reservation.partySize,
+          durationMinutes: reservation.durationMinutes,
+          preferredTime: reservation.startTime,
+          searchWindows: [15], // Small search window
+          maxSuggestions: 1
+        }
+      );
+      
+      if (beforeSlots.length > 0) {
+        const timeDiff = Math.abs(new Date(beforeSlots[0].startTime).getTime() - originalTime.getTime());
+        if (timeDiff < closestTimeDiff) {
+          closestTimeDiff = timeDiff;
+          bestSlot = beforeSlots[0];
+        }
+      }
+    }
+    
+    if (bestSlot) {
+      // Create a new reservation with the closest available slot
+      const newReservation: Reservation = {
+        ...reservation,
+        id: `duplicate-${Date.now()}`,
+        tableId: bestSlot.tableId,
+        startTime: bestSlot.startTime,
+        endTime: bestSlot.endTime,
+        customer: {
+          ...reservation.customer,
+          name: `${reservation.customer.name} (Copy)`
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      addReservation(newReservation);
+      showNotification('success', 'Success', 'Reservation duplicated successfully!');
+    } else {
+      showNotification('error', 'Error', 'No available slots found for duplication');
+    }
+  };
+
+  // Handle delete reservation
+  const handleDeleteReservation = (reservation: Reservation) => {
+    showNotification(
+      'warning',
+      'Delete Reservation',
+      `Are you sure you want to delete "${reservation.customer.name}" reservation?`,
+      {
+        isDelete: true,
+        onConfirm: () => {
+          // Delete the reservation
+          const { deleteReservation } = useTimelineStore.getState();
+          deleteReservation(reservation.id);
+          showNotification('success', 'Success', 'Reservation deleted successfully!');
+        }
+      }
+    );
+  };
+
   // Handle updating preview reservation
   const handleUpdatePreview = (updatedPreview: Reservation) => {
     setDrawerState(prev => ({
@@ -334,15 +503,6 @@ export default function TimelinePage() {
   };
 
   const handleSaveReservation = (reservation: Reservation): boolean => {
-    console.log('TimelinePage - handleSaveReservation:', {
-      reservationId: reservation.id,
-      startTime: reservation.startTime,
-      endTime: reservation.endTime,
-      startDate: reservation.startTime.split('T')[0],
-      endDate: reservation.endTime.split('T')[0],
-      tableId: reservation.tableId,
-      isExisting: !!reservationsById[reservation.id]
-    });
     
     // Check if this reservation already exists in the store
     const existingReservation = reservationsById[reservation.id];
@@ -475,14 +635,6 @@ export default function TimelinePage() {
       );
 
       if (!validation.isValid) {
-        console.log('🚫 RESIZE LEFT VALIDATION FAILED:', {
-          reservationId: reservation.id,
-          customerName: reservation.customer.name,
-          originalTime: `${formatTimeInTimezone(reservation.startTime, config.timezone)} - ${formatTimeInTimezone(reservation.endTime, config.timezone)}`,
-          newStartSlot,
-          originalEndSlot,
-          errors: validation.errors
-        });
 
         // Show error notification
         showNotification(
@@ -549,14 +701,6 @@ export default function TimelinePage() {
       );
 
       if (!validation.isValid) {
-        console.log('🚫 RESIZE RIGHT VALIDATION FAILED:', {
-          reservationId: reservation.id,
-          customerName: reservation.customer.name,
-          originalTime: `${formatTimeInTimezone(reservation.startTime, config.timezone)} - ${formatTimeInTimezone(reservation.endTime, config.timezone)}`,
-          originalStartSlot,
-          newEndSlot,
-          errors: validation.errors
-        });
 
         // Show error notification
         showNotification(
@@ -629,15 +773,6 @@ export default function TimelinePage() {
       );
 
       if (!validation.isValid) {
-        console.log('🚫 MOVE VALIDATION FAILED:', {
-          reservationId: reservation.id,
-          customerName: reservation.customer.name,
-          originalTime: `${formatTimeInTimezone(reservation.startTime, config.timezone)} - ${formatTimeInTimezone(reservation.endTime, config.timezone)}`,
-          targetTableId,
-          newStartSlot,
-          newEndSlot,
-          errors: validation.errors
-        });
 
         // Show error notification
         showNotification(
@@ -710,6 +845,8 @@ export default function TimelinePage() {
               scrollContainerRef={timelineRef}
               onSlotClick={handleOpenCreateDrawer}
               onEditClick={handleOpenEditDrawer}
+              onDuplicateClick={handleDuplicateReservation}
+              onDeleteClick={handleDeleteReservation}
               onCreateReservation={handleCreateReservation}
               selectedSectors={selectedSectors}
               searchTerm={searchTerm}
@@ -730,6 +867,7 @@ export default function TimelinePage() {
           validationErrors={drawerState.validationErrors}
           onClose={handleCloseDrawer}
           onSave={handleSaveReservation}
+          onDelete={handleDeleteReservation}
           onUpdatePreview={handleUpdatePreview}
           onClearErrors={handleClearErrors}
         />

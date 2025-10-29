@@ -65,10 +65,6 @@ export default function Toolbar() {
 
   // Unified function to generate valid reservations from static seeds
   const generateValidReservations = async (type: 'small' | 'large' = 'small') => {
-    console.log('🎯 Toolbar Generate Request:', {
-      type,
-      currentRestaurantConfig: restaurantConfig
-    });
     
     try {
       // Load static seed data

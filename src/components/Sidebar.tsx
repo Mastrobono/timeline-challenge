@@ -2,12 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Dialog,
-  DialogBackdrop,
-  DialogPanel,
-  TransitionChild,
-} from '@headlessui/react'
-import {
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -15,7 +9,7 @@ import {
   ChevronUpIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  CogIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline'
 import { XMarkIcon as XMarkIconSolid } from '@heroicons/react/20/solid'
 import useTimelineStore from '@/store/useTimelineStore'
@@ -102,7 +96,7 @@ export default function Sidebar({
   }
 
   const calendarDays = generateCalendarDays()
-  const selectedDate = new Date(visibleDate)
+  const selectedDate = new Date(visibleDate + 'T00:00:00') // Force local timezone
 
   const handleDateClick = (date: Date) => {
     // Use local date to avoid timezone issues
@@ -110,6 +104,7 @@ export default function Sidebar({
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateString = `${year}-${month}-${day}`
+
     setVisibleDate(dateString)
   }
 
@@ -122,7 +117,7 @@ export default function Sidebar({
   }
 
   return (
-    <div className={`bg-gray-900  h-full mt-auto fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ${sidebarCollapsed ? 'lg:w-0' : 'lg:w-72'}`}>
+    <div className={`bg-gray-900  h-full mt-auto fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-0' : 'md:w-64 lg:w-72'}`}>
       {/* Collapse/Expand Button - Positioned absolutely */}
       <button
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -136,13 +131,26 @@ export default function Sidebar({
         )}
       </button>
 
+
+
       <div className={`flex grow flex-col gap-y-5 bg-black/10 scrollbar-container ${sidebarCollapsed ? 'overflow-hidden px-2' : ''} pb-2`}>
         <div className={`scrollbar-content px-6 h-full !overflow-x-hidden ${sidebarCollapsed ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+
 
           {/* Restaurant Config Info */}
           {!sidebarCollapsed && restaurantConfig && (
             <>
-              <div className="space-y-4 text-sm pt-6 pb-4">
+
+
+              <div className="space-y-4 text-sm pt-5 pb-4">
+                {/* Home Button */}
+                <button
+                  onClick={() => window.location.href = '/'}
+                  className={` z-90 text-white cursor-pointer hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-300 p-2 border border-white/10`}
+                  title="Go to Home"
+                >
+                  <HomeIcon className="h-5 w-5" />
+                </button>
                 <div>
                   <p className="text-xs pb-1 font-semibold text-gray-400">Restaurant</p>
                   <p className="text-xs text-white">{restaurantConfig.name}</p>

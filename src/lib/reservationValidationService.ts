@@ -166,6 +166,8 @@ export class ReservationValidationService {
     if (!validationTimezone) {
       return 'Restaurant timezone not configured';
     }
+    
+    // Convert UTC times to restaurant timezone for validation
     const startTime = toZonedTime(new Date(reservation.startTime), validationTimezone);
     const endTime = toZonedTime(new Date(reservation.endTime), validationTimezone);
     
@@ -202,7 +204,7 @@ export class ReservationValidationService {
     const newStart = new Date(reservation.startTime);
     const newEnd = new Date(reservation.endTime);
     
-      // Check for overlaps with existing reservations on the same table
+    // Check for overlaps with existing reservations on the same table
       const conflictingReservation = existingReservations.find(existing => {
         if (!existing.startTime || !existing.endTime) return false;
         if (existing.tableId !== reservation.tableId) return false; // Only check same table
@@ -213,6 +215,9 @@ export class ReservationValidationService {
         
         // Check if reservations overlap (using precise UTC comparison)
         const hasOverlap = (newStart < existingEnd && newEnd > existingStart);
+        
+        if (hasOverlap) {
+        }
         
         return hasOverlap;
       });

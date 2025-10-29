@@ -5,7 +5,7 @@ import { NotificationData, NotificationType } from '@/components/ui/Notification
 
 interface UseNotificationReturn {
   notification: NotificationData | null
-  showNotification: (type: NotificationType, title: string, message: string) => void
+  showNotification: (type: NotificationType, title: string, message: string, options?: { isDelete?: boolean; onConfirm?: () => void }) => void
   hideNotification: () => void
 }
 
@@ -13,20 +13,29 @@ export function useNotification(): UseNotificationReturn {
   const [notification, setNotification] = useState<NotificationData | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const showNotification = useCallback((type: NotificationType, title: string, message: string) => {
+  const showNotification = useCallback((type: NotificationType, title: string, message: string, options?: { isDelete?: boolean; onConfirm?: () => void }) => {
     // Clear any existing timeout first
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
 
     const id = crypto.randomUUID()
-    setNotification({ id, type, title, message })
+    setNotification({ 
+      id, 
+      type, 
+      title, 
+      message, 
+      isDelete: options?.isDelete,
+      onConfirm: options?.onConfirm
+    })
 
-    // Auto-hide after 5 seconds
-    timeoutRef.current = setTimeout(() => {
-      setNotification(null)
-      timeoutRef.current = null
-    }, 5000)
+    // Auto-hide after 5 seconds (unless it's a delete confirmation)
+    if (!options?.isDelete) {
+      timeoutRef.current = setTimeout(() => {
+        setNotification(null)
+        timeoutRef.current = null
+      }, 5000)
+    }
   }, [])
 
   const hideNotification = useCallback(() => {

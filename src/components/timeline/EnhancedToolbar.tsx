@@ -91,7 +91,7 @@ export default function EnhancedToolbar({
         <div className="flex items-center gap-4">
           {/* Compact Zoom Controls */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-300">Zoom:</label>
+            <label className="text-xs font-medium text-gray-300 hidden lg:block">Zoom:</label>
             <div className="flex items-center bg-gray-800 rounded-md border border-white/10">
               <button
                 onClick={handleZoomOut}
@@ -117,7 +117,7 @@ export default function EnhancedToolbar({
 
           {/* View Mode */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-300">View:</label>
+            <label className="text-xs font-medium text-gray-300 hidden lg:block">View:</label>
             <select
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as 'day' | '3-day' | 'week' | 'month')}

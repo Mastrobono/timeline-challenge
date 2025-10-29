@@ -1,16 +1,18 @@
 'use client'
 
 import { Transition } from '@headlessui/react'
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 
-export type NotificationType = 'success' | 'error'
+export type NotificationType = 'success' | 'error' | 'warning'
 
 export interface NotificationData {
   id: string
   type: NotificationType
   title: string
   message: string
+  isDelete?: boolean
+  onConfirm?: () => void
 }
 
 interface NotificationProps {
@@ -19,12 +21,14 @@ interface NotificationProps {
 }
 
 export default function Notification({ notification, onClose }: NotificationProps) {
-  const { type, title, message } = notification
+  const { type, title, message, isDelete, onConfirm } = notification
 
   const icon = type === 'success' ? (
     <CheckCircleIcon aria-hidden="true" className="size-6 text-green-400" />
-  ) : (
+  ) : type === 'error' ? (
     <XCircleIcon aria-hidden="true" className="size-6 text-red-400" />
+  ) : (
+    <ExclamationTriangleIcon aria-hidden="true" className="size-6 text-yellow-400" />
   )
 
   return (
@@ -51,6 +55,27 @@ export default function Notification({ notification, onClose }: NotificationProp
                 <div className="ml-3 w-0 flex-1 pt-0.5">
                   <p className="text-sm font-medium text-white">{title}</p>
                   <p className="mt-1 text-sm text-gray-400">{message}</p>
+                  {isDelete && onConfirm && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onConfirm();
+                          onClose();
+                        }}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-red-500"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-gray-500"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="ml-4 flex shrink-0">
                   <button

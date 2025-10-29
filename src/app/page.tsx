@@ -1,103 +1,514 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { 
+  CalendarIcon, 
+  ChevronLeftIcon, 
+  ChevronRightIcon, 
+  MapPinIcon,
+  ClockIcon,
+  BuildingOfficeIcon,
+  SparklesIcon,
+  DocumentArrowDownIcon,
+  DocumentArrowUpIcon,
+  PlusIcon
+} from '@heroicons/react/24/outline';
+import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { filterReservationsByTimezone } from '@/lib/timeUtils';
+import { generateTablesAndSectors, generateValidReservationsInTimezone, generateRestaurantConfig } from '@/lib/seedGenerator';
+import { BulkImportService } from '@/lib/bulkImportService';
+import useTimelineStore from '@/store/useTimelineStore';
+import { useAutoInitialize } from '@/hooks/useAutoInitialize';
+import type { Reservation, RestaurantConfig, Table, Sector } from '@/types';
+
+// Loading skeleton component
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header skeleton */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-800 rounded w-64 mb-4"></div>
+          <div className="h-4 bg-gray-800 rounded w-96"></div>
+        </div>
+        
+        {/* Content skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left side skeleton */}
+          <div className="space-y-6">
+            <div className="h-64 bg-gray-800 rounded-lg"></div>
+            <div className="h-32 bg-gray-800 rounded-lg"></div>
+          </div>
+          
+          {/* Right side skeleton */}
+          <div className="h-96 bg-gray-800 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Restaurant config display component
+function RestaurantConfigDisplay({ config }: { config: RestaurantConfig }) {
+  const stats = [
+    { name: 'Operating Hours', stat: `${config.operatingHours.startHour}:00 - ${config.operatingHours.endHour}:00` },
+    { name: 'Timezone', stat: config.timezone.split('/').pop() || config.timezone },
+    { name: 'Slot Duration', stat: `${config.slotConfiguration.slotMinutes} minutes` },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-800/75 rounded-lg p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <BuildingOfficeIcon className="h-6 w-6 text-indigo-400" />
+          <h3 className="text-lg font-semibold text-white">{config.name}</h3>
+        </div>
+        <p className="text-gray-300 text-sm mb-4">Restaurant Configuration</p>
+        
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {stats.map((item) => (
+            <div
+              key={item.name}
+              className="overflow-hidden rounded-lg bg-gray-700/50 px-4 py-3 shadow ring-1 ring-inset ring-white/10"
+            >
+              <dt className="truncate text-xs font-medium text-gray-400">{item.name}</dt>
+              <dd className="mt-1 text-sm font-semibold tracking-tight text-white">{item.stat}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+// Main component
+function HomeContent() {
+  const router = useRouter();
+  const store = useTimelineStore();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  // Use auto-initialize hook to check if store is ready
+  const { isInitialized, isLoading: isInitializing } = useAutoInitialize();
+  
+  const { restaurantConfig, reservationsById, tablesById, sectorsById, setVisibleDate, ui } = store;
+  const reservations = Object.values(reservationsById);
+  
+  // Check if we have data
+  const hasData = restaurantConfig && reservations.length > 0;
+
+  // Handle navigation after store update
+  useEffect(() => {
+    if (pendingNavigation && isInitialized && !isInitializing) {
+      router.push(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  }, [pendingNavigation, isInitialized, isInitializing, router]);
+  
+  // Calendar component
+  const Calendar = () => {
+    const currentMonth = new Date();
+    const [currentMonthState, setCurrentMonthState] = useState(currentMonth);
+    
+    const previousMonth = () => {
+      setCurrentMonthState(prev => addDays(prev, -30));
+    };
+    
+    const nextMonth = () => {
+      setCurrentMonthState(prev => addDays(prev, 30));
+    };
+    
+    const monthStart = startOfMonth(currentMonthState);
+    const monthEnd = endOfMonth(currentMonthState);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    
+    // Group reservations by date using the SAME filtering logic as TimelineLayout
+    const reservationsByDate = reservations.reduce((acc, reservation) => {
+      // Convert UTC reservation time to restaurant timezone to get the correct date
+      const reservationDate = new Date(reservation.startTime);
+      const zonedDate = toZonedTime(reservationDate, restaurantConfig?.timezone || 'UTC');
+      const dateStr = format(zonedDate, 'yyyy-MM-dd');
+      
+      // Apply timezone filtering (same as TimelineLayout)
+      const config = {
+        date: dateStr,
+        startHour: restaurantConfig?.operatingHours.startHour || 7,
+        endHour: restaurantConfig?.operatingHours.endHour || 19,
+        slotMinutes: restaurantConfig?.slotConfiguration.slotMinutes || 15,
+        slotWidth: 30,
+        timezone: restaurantConfig?.timezone || 'UTC',
+        viewMode: 'day' as const,
+      };
+      
+      // Check if this reservation should be counted (within operating hours)
+      const timezoneFiltered = filterReservationsByTimezone([reservation], config, restaurantConfig);
+      if (timezoneFiltered.length === 0) {
+        return acc; // Skip if not within operating hours
+      }
+      
+      // Apply sector filter (same as TimelineLayout)
+      // Note: In home calendar, we show ALL sectors, so no sector filtering
+      
+      // Apply search filter (same as TimelineLayout)
+      // Note: In home calendar, we show ALL reservations, so no search filtering
+      
+      // Apply status filter (same as TimelineLayout)
+      // Note: In home calendar, we show ALL statuses, so no status filtering
+      
+      acc[dateStr] = (acc[dateStr] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return (
+      <div className="bg-gray-800/75 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Reservations Calendar</h3>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={previousMonth}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
+            <span className="text-white font-medium min-w-[120px] text-center">
+              {format(currentMonthState, 'MMMM yyyy')}
+            </span>
+            <button
+              onClick={nextMonth}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+            <div key={`day-${index}`} className="text-center text-xs font-medium text-gray-400 py-2">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day) => {
+            // Create date string directly without timezone conversion
+            // The day is already in local time, we just need the date part
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const reservationCount = reservationsByDate[dateStr] || 0;
+            
+            return (
+              <div
+                key={day.toISOString()}
+                onClick={() => {
+                  // Simply use the date string as is
+                  setVisibleDate(dateStr);
+                  
+                  // Set pending navigation to be handled by useEffect
+                  setPendingNavigation('/timeline');
+                }}
+                className={`
+                  aspect-square flex flex-col items-center justify-center p-1 rounded-lg
+                  ${isSameMonth(day, currentMonthState) ? 'bg-gray-700/50' : 'bg-gray-800/30'}
+                  ${isToday(day) ? 'ring-2 ring-indigo-500' : ''}
+                  hover:bg-gray-600/50 transition-colors cursor-pointer
+                `}
+              >
+                <span className={`
+                  text-sm font-medium
+                  ${isSameMonth(day, currentMonthState) ? 'text-white' : 'text-gray-500'}
+                  ${isToday(day) ? 'text-indigo-400' : ''}
+                `}>
+                  {format(day, 'd')}
+                </span>
+                {reservationCount > 0 && (
+                  <div className="mt-1 px-1 py-0.5 bg-indigo-500 text-white text-xs rounded-full min-w-[20px] text-center">
+                    {reservationCount}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  
+  // Generate new seed
+  const generateNewSeed = async () => {
+    setIsGenerating(true);
+    try {
+      const timezone = 'America/Argentina/Buenos_Aires';
+      
+      // Generate new restaurant config
+      const newConfig = generateRestaurantConfig(timezone);
+      
+      // Generate tables and sectors
+      const { tables, sectors } = generateTablesAndSectors();
+      
+      // Generate reservations with validation
+      const reservations = generateValidReservationsInTimezone(
+        tables,
+        sectors,
+        newConfig,
+        timezone,
+        10, // 10 reservations per day
+        90  // 90 days (3 months)
+      );
+      
+      // Update store
+      store.initializeWithValidation({
+        restaurantConfig: newConfig,
+        tables,
+        sectors,
+        reservations
+      });
+      
+    } catch (error) {
+      console.error('Error generating seed:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  // Export to CSV
+  const exportToCSV = async () => {
+    setIsExporting(true);
+    try {
+      const csvContent = BulkImportService.exportReservationsToCSV(reservations);
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reservations-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  // Generate random CSV
+  const generateRandomCSV = async () => {
+    setIsExporting(true);
+    try {
+      const timezone = 'America/Argentina/Buenos_Aires';
+      const config = generateRestaurantConfig(timezone);
+      const { tables, sectors } = generateTablesAndSectors();
+      const reservations = generateValidReservationsInTimezone(tables, sectors, config, timezone, 10, 10);
+      
+      const csvContent = BulkImportService.exportReservationsToCSV(reservations);
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `random-reservations-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating random CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  // Handle CSV import
+  const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const csvContent = e.target?.result as string;
+        
+        // Import directly into the store using the file
+        const result = await BulkImportService.importFromCSV(file, {
+          onProgress: (current, total) => {
+            // Optional: Could show progress in UI
+          },
+          onComplete: (valid, invalid) => {
+            // Import completed successfully
+          },
+          onError: (error) => {
+            console.error('Import error:', error.message);
+          }
+        });
+        
+        if (result.success) {
+          // Refresh the page to show new data
+          window.location.reload();
+        } else {
+          console.error('CSV import failed:', result.errors);
+          alert(`Import failed: ${result.errors.join(', ')}`);
+        }
+      } catch (error) {
+        console.error('Error importing CSV:', error);
+        alert(`Import error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsImporting(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+  
+  // Auto-generate seed if no data exists (only once when store is ready)
+  useEffect(() => {
+    if (isInitialized && !hasData && !isGenerating) {
+      generateNewSeed();
+    }
+  }, [isInitialized, hasData, isGenerating]);
+  
+  if (!isInitialized || isInitializing || (!hasData && isGenerating)) {
+    return <LoadingSkeleton />;
+  }
+  
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white">Restaurant Management</h1>
+              <p className="mt-2 text-gray-300">
+                Welcome! Here are your generated reservations with {reservations.length} total bookings.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => router.push('/timeline')}
+                className="relative inline-flex items-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+              >
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                View Timeline
+              </button>
+              <button
+                onClick={generateNewSeed}
+                disabled={isGenerating}
+                className="relative inline-flex items-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 disabled:opacity-50"
+              >
+                <SparklesIcon className="h-4 w-4 mr-2" />
+                {isGenerating ? 'Generating...' : 'Generate New Seed'}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Side - Restaurant Config */}
+          <div className="space-y-6">
+            <RestaurantConfigDisplay config={restaurantConfig!} />
+            
+            {/* Stats */}
+            <div className="bg-gray-800/75 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Reservation Statistics</h3>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="overflow-hidden rounded-lg bg-gray-700/50 px-4 py-3 shadow ring-1 ring-inset ring-white/10">
+                  <dt className="truncate text-xs font-medium text-gray-400">Total Reservations</dt>
+                  <dd className="mt-1 text-2xl font-semibold tracking-tight text-white">{reservations.length}</dd>
+                </div>
+                <div className="overflow-hidden rounded-lg bg-gray-700/50 px-4 py-3 shadow ring-1 ring-inset ring-white/10">
+                  <dt className="truncate text-xs font-medium text-gray-400">VIP Reservations</dt>
+                  <dd className="mt-1 text-2xl font-semibold tracking-tight text-white">
+                    {reservations.filter(r => r.priority === 'VIP').length}
+                  </dd>
+                </div>
+                <div className="overflow-hidden rounded-lg bg-gray-700/50 px-4 py-3 shadow ring-1 ring-inset ring-white/10">
+                  <dt className="truncate text-xs font-medium text-gray-400 flex items-center">
+                    Large Groups
+                    <div className="ml-1 group relative">
+                      <div className="w-3 h-3 rounded-full bg-gray-500 flex items-center justify-center text-xs cursor-help">
+                        i
+                      </div>
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[9999]">
+                        Groups of 6+ people
+                      </div>
+                    </div>
+                  </dt>
+                  <dd className="mt-1 text-2xl font-semibold tracking-tight text-white">
+                    {reservations.filter(r => r.priority === 'LARGE_GROUP').length}
+                  </dd>
+                </div>
+                <div className="overflow-hidden rounded-lg bg-gray-700/50 px-4 py-3 shadow ring-1 ring-inset ring-white/10">
+                  <dt className="truncate text-xs font-medium text-gray-400">With Preferred Sector</dt>
+                  <dd className="mt-1 text-2xl font-semibold tracking-tight text-white">
+                    {reservations.filter(r => r.preferredSectorId).length}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            
+            {/* CSV Actions */}
+            <div className="bg-gray-800/75 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Data Management</h3>
+              <div className="space-y-3">
+                <div className="flex space-x-3">
+                  <button
+                    onClick={exportToCSV}
+                    disabled={isExporting}
+                    className="flex-1 inline-flex items-center justify-center rounded-md bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
+                  >
+                    <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Exporting...' : 'Export Current Data'}
+                  </button>
+                  <button
+                    onClick={generateRandomCSV}
+                    disabled={isExporting}
+                    className="flex-1 inline-flex items-center justify-center rounded-md bg-purple-500 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 disabled:opacity-50"
+                  >
+                    <SparklesIcon className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Generating...' : 'Generate Random CSV'}
+                  </button>
+                </div>
+                
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    disabled={isImporting}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <div className="flex items-center justify-center rounded-md border-2 border-dashed border-gray-600 px-4 py-3 text-sm text-gray-300 hover:border-gray-500 hover:text-white transition-colors">
+                    <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
+                    {isImporting ? 'Importing...' : 'Import CSV File'}
+                  </div>
+                </div>
+                
+                <p className="text-xs text-gray-400 text-center">
+                  Don't have a CSV? We'll generate a random one for you! 😊
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right Side - Calendar */}
+          <div>
+            <Calendar />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    <Suspense fallback={<LoadingSkeleton />}>
+      <HomeContent />
+    </Suspense>
   );
 }

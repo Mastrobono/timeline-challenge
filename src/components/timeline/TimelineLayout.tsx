@@ -46,6 +46,8 @@ interface TimelineLayoutProps {
   previewReservation?: Reservation | null;
   onSlotClick?: (table: Table, startTime: string) => void;
   onEditClick?: (reservation: Reservation, table: Table, startTime: string) => void;
+  onDuplicateClick?: (reservation: Reservation) => void;
+  onDeleteClick?: (reservation: Reservation) => void;
   onCreateReservation?: (table: Table, startTime: string, endTime: string) => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   selectedSectors?: string[];
@@ -54,7 +56,7 @@ interface TimelineLayoutProps {
 }
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
-  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, previewReservation, onSlotClick, onEditClick, onCreateReservation, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
+  ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, previewReservation, onSlotClick, onEditClick, onDuplicateClick, onDeleteClick, onCreateReservation, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
   // Use store data if props are not provided
   const store = useTimelineStore();
   
@@ -95,17 +97,17 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     
     // Filter reservations based on viewMode, visibleDate, timezone, sectors, search, and status
     const filteredReservations = useMemo(() => {
-      console.log('TimelineLayout - Filtering reservations:', {
-        totalReservations: finalReservations.length,
-        viewMode,
-        visibleDate,
-        reservations: finalReservations.map(r => ({
-          id: r.id,
-          startTime: r.startTime,
-          date: r.startTime?.split('T')[0],
-          tableId: r.tableId
-        }))
-      });
+      // console.log('TimelineLayout - Filtering reservations:', {
+      //   totalReservations: finalReservations.length,
+      //   viewMode,
+      //   visibleDate,
+      //   reservations: finalReservations.map(r => ({
+      //     id: r.id,
+      //     startTime: r.startTime,
+      //     date: r.startTime?.split('T')[0],
+      //     tableId: r.tableId
+      //   }))
+      // });
       
       // First filter by date
       const dateFilteredReservations = finalReservations.filter(reservation => {
@@ -125,19 +127,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             const day2 = format(addDays(parseDate(visibleDate), 1), 'yyyy-MM-dd');
             const day3 = format(addDays(parseDate(visibleDate), 2), 'yyyy-MM-dd');
             isInDateRange = reservationDate === day1 || reservationDate === day2 || reservationDate === day3;
-            
-            // Debug log for 3-day filter
-            if (process.env.NODE_ENV === 'development') {
-              console.log('TimelineLayout - 3-day filter:', {
-                reservationId: reservation.id,
-                reservationDate,
-                visibleDate,
-                day1,
-                day2,
-                day3,
-                isInDateRange
-              });
-            }
             break;
           case 'week':
             const weekDay1 = visibleDate;
@@ -148,23 +137,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             const weekDay6 = format(addDays(parseDate(visibleDate), 5), 'yyyy-MM-dd');
             const weekDay7 = format(addDays(parseDate(visibleDate), 6), 'yyyy-MM-dd');
             isInDateRange = reservationDate === weekDay1 || reservationDate === weekDay2 || reservationDate === weekDay3 || reservationDate === weekDay4 || reservationDate === weekDay5 || reservationDate === weekDay6 || reservationDate === weekDay7;
-            
-            // Debug log for week filter
-            if (process.env.NODE_ENV === 'development') {
-              console.log('TimelineLayout - week filter:', {
-                reservationId: reservation.id,
-                reservationDate,
-                visibleDate,
-                weekDay1,
-                weekDay2,
-                weekDay3,
-                weekDay4,
-                weekDay5,
-                weekDay6,
-                weekDay7,
-                isInDateRange
-              });
-            }
             break;
           case 'month':
             isInDateRange = true; // Month view shows all reservations
@@ -219,19 +191,19 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         }
       }
       
-      console.log('TimelineLayout - Filter results:', {
-        dateFiltered: dateFilteredReservations.length,
-        timezoneFiltered: timezoneFilteredReservations.length,
-        sectorFiltered: sectorFiltered.length,
-        searchFiltered: searchFiltered.length,
-        finalFiltered: statusFiltered.length,
-        finalReservations: statusFiltered.map(r => ({
-          id: r.id,
-          startTime: r.startTime,
-          date: r.startTime?.split('T')[0],
-          tableId: r.tableId
-        }))
-      });
+      // console.log('TimelineLayout - Filter results:', {
+      //   dateFiltered: dateFilteredReservations.length,
+      //   timezoneFiltered: timezoneFilteredReservations.length,
+      //   sectorFiltered: sectorFiltered.length,
+      //   searchFiltered: searchFiltered.length,
+      //   finalFiltered: statusFiltered.length,
+      //   finalReservations: statusFiltered.map(r => ({
+      //     id: r.id,
+      //     startTime: r.startTime,
+      //     date: r.startTime?.split('T')[0],
+      //     tableId: r.tableId
+      //   }))
+      // });
       
       return statusFiltered;
     }, [finalReservations, visibleDate, viewMode, finalConfig.timezone, finalConfig, store.restaurantConfig, selectedSectors, searchTerm, selectedStatuses, finalTables, store.sectorsById]);
@@ -515,6 +487,8 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           viewMode={ui.viewMode}
                           onSlotClick={onSlotClick}
                           onEditClick={onEditClick}
+                          onDuplicateClick={onDuplicateClick}
+                          onDeleteClick={onDeleteClick}
                           onCreateReservation={onCreateReservation}
                         />
                       ))}

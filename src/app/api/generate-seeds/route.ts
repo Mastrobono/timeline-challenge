@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateReservationsInTimezone, generateTablesAndSectors, generateRestaurantConfig } from '@/lib/seedGenerator';
+import { generateValidReservationsInTimezone, generateTablesAndSectors, generateRestaurantConfig } from '@/lib/seedGenerator';
 
 export async function POST(request: NextRequest) {
   try {
     const { type, timezone = 'America/Argentina/Buenos_Aires' } = await request.json();
     
-    console.log('🔄 API Generate Seeds Request:', { type, timezone });
+    // Generate seed data
     
     if (!type || !['small', 'large'].includes(type)) {
       return NextResponse.json({ error: 'Invalid type. Must be "small" or "large"' }, { status: 400 });
@@ -17,22 +17,18 @@ export async function POST(request: NextRequest) {
     // Generate restaurant config with the specified timezone
     const restaurantConfig = generateRestaurantConfig(timezone);
     
-    // Generate reservations in the specified timezone
-    const reservationCount = type === 'large' ? 200 : 50;
+    // Generate reservations with validation
+    const reservationsPerDay = type === 'large' ? 15 : 8;
+    const totalDays = type === 'large' ? 30 : 20;
     
-    const reservations = generateReservationsInTimezone(
+    const reservations = generateValidReservationsInTimezone(
       tables,
       sectors,
       restaurantConfig,
       timezone,
-      reservationCount
+      reservationsPerDay,
+      totalDays
     );
-    
-    console.log('✅ API Generate Seeds Response:', {
-      reservationsCount: reservations.length,
-      restaurantName: restaurantConfig.name,
-      restaurantTimezone: restaurantConfig.timezone
-    });
     
     return NextResponse.json({
       reservations,
