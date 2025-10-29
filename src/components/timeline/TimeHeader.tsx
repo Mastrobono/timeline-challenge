@@ -1,6 +1,5 @@
 import React from 'react';
 import { addDays, format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 import type { TimelineConfig } from '@/types';
 import { slotToPx, getSlotsPerDay } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
@@ -10,7 +9,7 @@ interface TimeHeaderProps {
 }
 
 export default function TimeHeader({ config }: TimeHeaderProps) {
-  const { startHour, endHour, slotMinutes, slotWidth, timezone } = config;
+  const { startHour, endHour, slotMinutes, slotWidth } = config;
   const { ui } = useTimelineStore();
   const { viewMode, visibleDate } = ui;
   
@@ -47,7 +46,6 @@ export default function TimeHeader({ config }: TimeHeaderProps) {
     for (let dayIndex = 0; dayIndex < daysInView; dayIndex++) {
       const dayDate = addDays(new Date(visibleDate), dayIndex);
       const dayStartPosition = dayIndex * slotsPerDay * slotWidth;
-      const dayWidth = slotsPerDay * slotWidth;
       
       dayHeaders.push(
         <div

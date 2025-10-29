@@ -1,6 +1,5 @@
 import type { Reservation, Table, Sector, TimelineConfig, RestaurantConfig } from '@/types';
 import useTimelineStore from '@/store/useTimelineStore';
-import { AutoSchedulingService } from '@/lib/autoSchedulingService';
 import Papa from 'papaparse';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
@@ -55,14 +54,20 @@ export class BulkImportService {
 
   /**
    * Convert UTC time to restaurant timezone for CSV export
+   * For CSV round-trip reliability, we keep dates in UTC format
+   * The dates are stored in UTC internally, so we export them as UTC
    */
   private static convertToRestaurantTimezone(utcTime: string, restaurantTimezone: string): string {
+    // Keep UTC for CSV export/import round-trip reliability
+    // This ensures that export -> import preserves exact dates
     try {
-      const utcDate = new Date(utcTime);
-      const restaurantDate = toZonedTime(utcDate, restaurantTimezone);
-      return restaurantDate.toISOString();
+      const date = new Date(utcTime);
+      if (isNaN(date.getTime())) {
+        return utcTime;
+      }
+      return date.toISOString();
     } catch (error) {
-      console.warn('Failed to convert timezone, using original time:', error);
+      console.warn('Failed to format time, using original:', error);
       return utcTime;
     }
   }
@@ -206,7 +211,7 @@ export class BulkImportService {
         this.store.restaurantConfig!
       );
       
-      // Replace all reservations (not add to existing)
+      // Replace all reservations with imported ones (CSV import should replace)
       this.store.replaceAllReservations(processedReservations);
       
       const allReservations = Object.values(this.store.reservationsById);
@@ -244,10 +249,10 @@ export class BulkImportService {
   private static processWithAutoScheduling(
     reservations: Reservation[],
     tables: Table[],
-    sectors: Sector[],
-    existingReservations: Reservation[],
-    config: TimelineConfig,
-    restaurantConfig: RestaurantConfig
+    _sectors: Sector[],
+    _existingReservations: Reservation[],
+    _config: TimelineConfig,
+    _restaurantConfig: RestaurantConfig
   ): Reservation[] {
     const processedReservations: Reservation[] = [];
     
@@ -291,7 +296,7 @@ export class BulkImportService {
               tableId: suitableTable.id
             };
           }
-        } catch (error) {
+        } catch {
           // If assignment fails, keep original reservation
         }
         
@@ -371,17 +376,25 @@ export class BulkImportService {
       if (rowData.partysize || rowData.party_size) reservation.partySize = parseInt(rowData.partysize || rowData.party_size) || 1;
       if (rowData.starttime || rowData.start_time) {
         const startTimeValue = rowData.starttime || rowData.start_time;
-        // Convert from restaurant timezone to UTC for storage
-        const store = useTimelineStore.getState();
-        const restaurantTimezone = store.restaurantConfig?.timezone || 'UTC';
-        reservation.startTime = this.convertFromRestaurantTimezone(startTimeValue, restaurantTimezone);
+        // CSV dates are exported in UTC, so we keep them as UTC
+        // Just ensure it's a valid ISO string
+        const date = new Date(startTimeValue);
+        if (!isNaN(date.getTime())) {
+          reservation.startTime = date.toISOString();
+        } else {
+          reservation.startTime = startTimeValue;
+        }
       }
       if (rowData.endtime || rowData.end_time) {
         const endTimeValue = rowData.endtime || rowData.end_time;
-        // Convert from restaurant timezone to UTC for storage
-        const store = useTimelineStore.getState();
-        const restaurantTimezone = store.restaurantConfig?.timezone || 'UTC';
-        reservation.endTime = this.convertFromRestaurantTimezone(endTimeValue, restaurantTimezone);
+        // CSV dates are exported in UTC, so we keep them as UTC
+        // Just ensure it's a valid ISO string
+        const date = new Date(endTimeValue);
+        if (!isNaN(date.getTime())) {
+          reservation.endTime = date.toISOString();
+        } else {
+          reservation.endTime = endTimeValue;
+        }
       }
       if (rowData.durationminutes || rowData.duration_minutes) reservation.durationMinutes = parseInt(rowData.durationminutes || rowData.duration_minutes) || 60;
       if (rowData.status) reservation.status = rowData.status as 'CONFIRMED' | 'PENDING' | 'SEATED' | 'FINISHED' | 'CANCELLED';
@@ -469,28 +482,52 @@ export class BulkImportService {
         };
       }
       
-      const rawReservations = parseResult.data as any[];
-      const reservations: Reservation[] = rawReservations.map(row => ({
-        id: row.id || crypto.randomUUID(),
-        tableId: row.tableId,
-        customer: {
-          name: row.customerName || '',
-          phone: row.customerPhone || '',
-          email: row.customerEmail || undefined,
-          notes: row.customerNotes || undefined
-        },
-        partySize: parseInt(row.partySize) || 2,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        durationMinutes: parseInt(row.durationMinutes) || 120,
-        status: row.status || 'CONFIRMED',
-        priority: row.priority || 'STANDARD',
-        notes: row.notes || undefined,
-        preferredSectorId: row.preferredSectorId || undefined,
-        source: row.source || 'IMPORT',
-        createdAt: row.createdAt || new Date().toISOString(),
-        updatedAt: row.updatedAt || new Date().toISOString()
-      }));
+      const rawReservations = parseResult.data as Record<string, unknown>[];
+      const reservations: Reservation[] = rawReservations.map(row => {
+        // CSV dates are in UTC (matching how we export them)
+        // Just ensure they're valid ISO strings
+        const startTimeRaw = (row.startTime as string) || '';
+        const endTimeRaw = (row.endTime as string) || '';
+        
+        let startTime = startTimeRaw;
+        let endTime = endTimeRaw;
+        
+        // Validate and normalize dates to ISO format
+        if (startTimeRaw) {
+          const date = new Date(startTimeRaw);
+          if (!isNaN(date.getTime())) {
+            startTime = date.toISOString();
+          }
+        }
+        if (endTimeRaw) {
+          const date = new Date(endTimeRaw);
+          if (!isNaN(date.getTime())) {
+            endTime = date.toISOString();
+          }
+        }
+        
+        return {
+          id: (row.id as string) || crypto.randomUUID(),
+          tableId: (row.tableId as string),
+          customer: {
+            name: (row.customerName as string) || '',
+            phone: (row.customerPhone as string) || '',
+            email: (row.customerEmail as string) || undefined,
+            notes: (row.customerNotes as string) || undefined
+          },
+          partySize: parseInt(String(row.partySize || '2')) || 2,
+          startTime: startTime,
+          endTime: endTime,
+          durationMinutes: parseInt(String(row.durationMinutes || '120')) || 120,
+          status: (row.status as Reservation['status']) || 'CONFIRMED',
+          priority: (row.priority as Reservation['priority']) || 'STANDARD',
+          notes: (row.notes as string) || undefined,
+          preferredSectorId: (row.preferredSectorId as string) || undefined,
+          source: (row.source as string) || 'IMPORT',
+          createdAt: (row.createdAt as string) || new Date().toISOString(),
+          updatedAt: (row.updatedAt as string) || new Date().toISOString()
+        };
+      });
       
       // Basic validation without store dependency
       const validReservations: Reservation[] = [];

@@ -1,27 +1,24 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   CalendarIcon, 
   ChevronLeftIcon, 
   ChevronRightIcon, 
-  MapPinIcon,
-  ClockIcon,
   BuildingOfficeIcon,
   SparklesIcon,
   DocumentArrowDownIcon,
-  DocumentArrowUpIcon,
-  PlusIcon
+  DocumentArrowUpIcon
 } from '@heroicons/react/24/outline';
-import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
-import { filterReservationsByTimezone } from '@/lib/timeUtils';
+import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { filterReservationsByTimezone, parseDateString } from '@/lib/timeUtils';
 import { generateTablesAndSectors, generateValidReservationsInTimezone, generateRestaurantConfig } from '@/lib/seedGenerator';
 import { BulkImportService } from '@/lib/bulkImportService';
 import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
-import type { Reservation, RestaurantConfig, Table, Sector } from '@/types';
+import type { RestaurantConfig } from '@/types';
 
 // Loading skeleton component
 function LoadingSkeleton() {
@@ -90,12 +87,13 @@ function HomeContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isAdding900, setIsAdding900] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // Use auto-initialize hook to check if store is ready
   const { isInitialized, isLoading: isInitializing } = useAutoInitialize();
   
-  const { restaurantConfig, reservationsById, tablesById, sectorsById, setVisibleDate, ui } = store;
+  const { restaurantConfig, reservationsById, setVisibleDate } = store;
   const reservations = Object.values(reservationsById);
   
   // Check if we have data
@@ -111,8 +109,9 @@ function HomeContent() {
   
   // Calendar component
   const Calendar = () => {
-    const currentMonth = new Date();
-    const [currentMonthState, setCurrentMonthState] = useState(currentMonth);
+    // Initialize with today's date using parseDateString for consistency
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const [currentMonthState, setCurrentMonthState] = useState(parseDateString(todayStr));
     
     const previousMonth = () => {
       setCurrentMonthState(prev => addDays(prev, -30));
@@ -239,7 +238,7 @@ function HomeContent() {
   };
   
   // Generate new seed
-  const generateNewSeed = async () => {
+  const generateNewSeed = useCallback(async () => {
     setIsGenerating(true);
     try {
       const timezone = 'America/Argentina/Buenos_Aires';
@@ -273,7 +272,7 @@ function HomeContent() {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [store]);
   
   // Export to CSV
   const exportToCSV = async () => {
@@ -329,16 +328,14 @@ function HomeContent() {
     
     setIsImporting(true);
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async () => {
       try {
-        const csvContent = e.target?.result as string;
-        
         // Import directly into the store using the file
-        const result = await BulkImportService.importFromCSV(file, {
-          onProgress: (current, total) => {
+        await BulkImportService.importFromCSV(file, {
+          onProgress: () => {
             // Optional: Could show progress in UI
           },
-          onComplete: (valid, invalid) => {
+          onComplete: () => {
             // Import completed successfully
           },
           onError: (error) => {
@@ -346,13 +343,8 @@ function HomeContent() {
           }
         });
         
-        if (result.success) {
-          // Refresh the page to show new data
-          window.location.reload();
-        } else {
-          console.error('CSV import failed:', result.errors);
-          alert(`Import failed: ${result.errors.join(', ')}`);
-        }
+        // Refresh the page to show new data
+        window.location.reload();
       } catch (error) {
         console.error('Error importing CSV:', error);
         alert(`Import error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -363,15 +355,68 @@ function HomeContent() {
     reader.readAsText(file);
   };
   
+  // Add 900 more reservations
+  const add900Reservations = useCallback(async () => {
+    if (!restaurantConfig) return;
+    
+    setIsAdding900(true);
+    try {
+      const timezone = restaurantConfig.timezone || 'America/Argentina/Buenos_Aires';
+      const tables = Object.values(store.tablesById);
+      const sectors = Object.values(store.sectorsById);
+      
+      // Generate 900 more reservations (10 per day × 90 days)
+      const newReservations = generateValidReservationsInTimezone(
+        tables,
+        sectors,
+        restaurantConfig,
+        timezone,
+        10, // 10 reservations per day
+        90  // 90 days
+      );
+      
+      // Add to existing reservations
+      store.bulkImportReservations(newReservations);
+    } catch (error) {
+      console.error('Error adding 900 reservations:', error);
+      alert(`Error adding reservations: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsAdding900(false);
+    }
+  }, [restaurantConfig, store]);
+  
   // Auto-generate seed if no data exists (only once when store is ready)
   useEffect(() => {
     if (isInitialized && !hasData && !isGenerating) {
       generateNewSeed();
     }
-  }, [isInitialized, hasData, isGenerating]);
+  }, [isInitialized, hasData, isGenerating, generateNewSeed]);
   
   if (!isInitialized || isInitializing || (!hasData && isGenerating)) {
     return <LoadingSkeleton />;
+  }
+  
+  // Don't render if we don't have restaurantConfig
+  if (!restaurantConfig) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-yellow-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-lg font-semibold text-gray-100 mb-2">No Configuration Found</h2>
+          <p className="text-gray-400 mb-4">
+            Please click &quot;Generate New Seed&quot; to initialize the restaurant data.
+          </p>
+          <button
+            onClick={generateNewSeed}
+            disabled={isGenerating}
+            className="inline-flex items-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-400 disabled:opacity-50"
+          >
+            <SparklesIcon className="h-4 w-4 mr-2" />
+            {isGenerating ? 'Generating...' : 'Generate New Seed'}
+          </button>
+        </div>
+      </div>
+    );
   }
   
   return (
@@ -489,8 +534,29 @@ function HomeContent() {
                 </div>
                 
                 <p className="text-xs text-gray-400 text-center">
-                  Don't have a CSV? We'll generate a random one for you! 😊
+                  Don&apos;t have a CSV? We&apos;ll generate a random one for you! 😊
                 </p>
+                
+                {/* Stress test button */}
+                <div className="pt-3 border-t border-gray-700">
+                  <button
+                    onClick={add900Reservations}
+                    disabled={isAdding900 || !restaurantConfig}
+                    className="group w-full text-xxs text-orange-400 text-center cursor-pointer transition-all"
+                  >
+                    {isAdding900 ? (
+                      <span className="flex items-center justify-center">
+                        <span className="animate-spin mr-2">⚡</span>
+                        Adding 900 reservations...
+                      </span>
+                    ) : (
+                      <>
+                        <span className="group-hover:hidden">Would you like to stress my app?</span>
+                        <span className="hidden group-hover:inline">please no :D</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

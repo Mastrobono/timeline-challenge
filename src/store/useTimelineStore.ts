@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { addDays, addWeeks, addMonths } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { getTodayInTimezone } from '@/lib/timeUtils';
+import { getTodayInTimezone, parseDateString } from '@/lib/timeUtils';
 import { ReservationFilterService } from '@/lib/reservationFilterService';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 import type { Table, Sector, Reservation, UUID, RestaurantConfig } from '@/types';
@@ -157,7 +157,6 @@ const useTimelineStore = create<TimelineStore>()(
             const timezone = state.restaurantConfig?.timezone || 'UTC';
             const zonedEndTime = toZonedTime(endTime, timezone);
             const endHour = zonedEndTime.getHours();
-            const endMinutes = zonedEndTime.getMinutes();
             const restaurantEndHour = state.restaurantConfig?.operatingHours.endHour || 22;
             
             // Check if reservation ends after restaurant closes (allow 1 hour buffer)
@@ -400,19 +399,19 @@ const useTimelineStore = create<TimelineStore>()(
 
           switch (viewMode) {
             case 'day':
-              newDate = addDays(new Date(visibleDate), 1);
+              newDate = addDays(parseDateString(visibleDate), 1);
               break;
             case '3-day':
-              newDate = addDays(new Date(visibleDate), 3);
+              newDate = addDays(parseDateString(visibleDate), 3);
               break;
             case 'week':
-              newDate = addWeeks(new Date(visibleDate), 1);
+              newDate = addWeeks(parseDateString(visibleDate), 1);
               break;
             case 'month':
-              newDate = addMonths(new Date(visibleDate), 1);
+              newDate = addMonths(parseDateString(visibleDate), 1);
               break;
             default:
-              newDate = new Date(visibleDate);
+              newDate = parseDateString(visibleDate);
           }
 
           return {
@@ -432,19 +431,19 @@ const useTimelineStore = create<TimelineStore>()(
 
           switch (viewMode) {
             case 'day':
-              newDate = addDays(new Date(visibleDate), -1);
+              newDate = addDays(parseDateString(visibleDate), -1);
               break;
             case '3-day':
-              newDate = addDays(new Date(visibleDate), -3);
+              newDate = addDays(parseDateString(visibleDate), -3);
               break;
             case 'week':
-              newDate = addWeeks(new Date(visibleDate), -1);
+              newDate = addWeeks(parseDateString(visibleDate), -1);
               break;
             case 'month':
-              newDate = addMonths(new Date(visibleDate), -1);
+              newDate = addMonths(parseDateString(visibleDate), -1);
               break;
             default:
-              newDate = new Date(visibleDate);
+              newDate = parseDateString(visibleDate);
           }
 
           return {
@@ -591,7 +590,6 @@ const useTimelineStore = create<TimelineStore>()(
       replaceAllReservations: (reservations: Reservation[]) => {
         set((state) => {
           const tables = Object.values(state.tablesById);
-          const existingReservations = Object.values(state.reservationsById);
           
           // Validate new reservations
           const validation = ReservationValidationService.validateReservations(

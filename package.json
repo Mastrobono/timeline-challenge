@@ -2,10 +2,10 @@
   "name": "woki-challenge",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "generate-static-seeds": "node scripts/generate-static-seeds.js small",
     "dev": "next dev --turbopack",
-    "build": "npm run generate-static-seeds && next build --turbopack",
+    "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",

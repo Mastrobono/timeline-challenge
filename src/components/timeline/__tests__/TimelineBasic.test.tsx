@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { create } from 'zustand';
 import TimelineLayout from '../TimelineLayout';
 import type { TimelineConfig, Table, Sector, Reservation } from '@/types';

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import useTimelineStore from '@/store/useTimelineStore';
-import { loadStaticSeed } from '@/lib/staticSeeds';
+import { generateTablesAndSectors, generateValidReservationsInTimezone, generateRestaurantConfig } from '@/lib/seedGenerator';
 
 /**
  * Hook to automatically initialize the store with static seeds
@@ -40,24 +40,35 @@ export function useAutoInitialize() {
       setError(null);
 
       try {
-        // Load static seed
-        const seedData = await loadStaticSeed();
+        // Generate data dynamically (no need for static-seed.json file)
+        const timezone = 'America/Argentina/Buenos_Aires';
+        const restaurantConfig = generateRestaurantConfig(timezone);
+        const { tables, sectors } = generateTablesAndSectors();
+        const reservations = generateValidReservationsInTimezone(
+          tables,
+          sectors,
+          restaurantConfig,
+          timezone,
+          10, // 10 reservations per day
+          90  // 90 days
+        );
         
-        // Initialize store with seed data
+        // Initialize store with generated data
         initializeWithValidation({
-          reservations: seedData.reservations,
-          tables: seedData.tables,
-          sectors: seedData.sectors,
-          restaurantConfig: seedData.restaurantConfig
+          reservations,
+          tables,
+          sectors,
+          restaurantConfig
         });
 
         setIsInitialized(true);
+        console.log('✅ Generated and initialized seed data dynamically');
         
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Error initializing store:', err);
+        console.error('❌ Error initializing store:', err);
         setError(errorMessage);
-        // In case of error, allow rendering to show the error
+        // In case of error, still allow rendering to show the error message
         setIsInitialized(true);
       } finally {
         setIsLoading(false);

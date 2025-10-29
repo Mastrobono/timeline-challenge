@@ -1,6 +1,6 @@
 import { Reservation, Table, Sector, TimelineConfig, RestaurantConfig } from '@/types';
-import { isoToSlotIndex, slotToIso, getSlotsPerDay } from '@/lib/timeUtils';
-import { canReserveSlot, getAvailableSlots } from '@/lib/conflictService';
+import { isoToSlotIndex } from '@/lib/timeUtils';
+import { canReserveSlot } from '@/lib/conflictService';
 import { addMinutes, differenceInMinutes } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
@@ -137,7 +137,6 @@ export class AutoSchedulingService {
     const { searchWindows = [15, 30, 60], maxSuggestions = 10 } = options;
     
     const availableSlots: TimeSlot[] = [];
-    const preferredDate = new Date(preferredTime);
     
     // Search in each time window
     for (const windowMinutes of searchWindows) {
@@ -277,18 +276,46 @@ export class AutoSchedulingService {
       minHistoryReservations?: number;
       vipThreshold?: number;
       largePartyThreshold?: number;
+      excludeReservationId?: string;
     } = {}
   ): VIPAnalysis {
-    const { minHistoryReservations = 3, vipThreshold = 0.7, largePartyThreshold = 8 } = options;
+    const { minHistoryReservations = 3, vipThreshold = 0.7, largePartyThreshold = 8, excludeReservationId } = options;
     
     const reasons: string[] = [];
     let confidence = 0;
     
-    // Check customer history
-    const customerReservations = customerHistory.filter(r => 
-      r.customer.phone === reservation.customer?.phone ||
-      r.customer.email === reservation.customer?.email
-    );
+    // Check customer history - only match on non-empty phone or email
+    const reservationPhone = reservation.customer?.phone?.trim() || '';
+    const reservationEmail = reservation.customer?.email?.trim() || '';
+    
+    // Skip if no identifying information
+    if (!reservationPhone && !reservationEmail) {
+      return {
+        isVIP: false,
+        confidence: 0,
+        reasons: [],
+        suggestedPriority: 'STANDARD'
+      };
+    }
+    
+    // Filter history: must match phone (if both non-empty) OR email (if both non-empty)
+    // Exclude the current reservation from history
+    const customerReservations = customerHistory.filter(r => {
+      // Exclude current reservation if ID provided
+      if (excludeReservationId && r.id === excludeReservationId) {
+        return false;
+      }
+      
+      // Match by phone if both have non-empty phones
+      const phoneMatch = reservationPhone && r.customer.phone?.trim() && 
+                        r.customer.phone.trim() === reservationPhone;
+      
+      // Match by email if both have non-empty emails
+      const emailMatch = reservationEmail && r.customer.email?.trim() && 
+                        r.customer.email.trim() === reservationEmail;
+      
+      return phoneMatch || emailMatch;
+    });
     
     if (customerReservations.length >= minHistoryReservations) {
       confidence += 0.3;
@@ -310,9 +337,16 @@ export class AutoSchedulingService {
     }
     
     // Check current reservation characteristics
+    // Large party size only contributes if customer has history (not a first-time visitor)
     if (reservation.partySize && reservation.partySize >= largePartyThreshold) {
-      confidence += 0.3;
-      reasons.push(`Large party size: ${reservation.partySize} people`);
+      if (customerReservations.length > 0) {
+        // Only add confidence if customer has previous reservations
+        confidence += 0.2;
+        reasons.push(`Large party size: ${reservation.partySize} people (returning customer)`);
+      } else {
+        // First-time large groups should be LARGE_GROUP, not VIP
+        reasons.push(`Large party size: ${reservation.partySize} people (first visit - consider LARGE_GROUP priority)`);
+      }
     }
     
     if (reservation.priority === 'VIP') {
@@ -357,7 +391,6 @@ export class AutoSchedulingService {
     // Formula: 1 - |partySize - midpoint| / maxCapacity
     // Prioritizes tables where party size is close to the midpoint of capacity range
     // This balances efficiency with operational flexibility (room for late arrivals, comfort)
-    const capacityUtilization = partySize / table.capacity.max;
     const capacityFit = 1 - Math.abs(partySize - (table.capacity.min + table.capacity.max) / 2) / table.capacity.max; 
     score += capacityFit * 50;
     
@@ -509,7 +542,6 @@ export class AutoSchedulingService {
    * Calculate capacity fit score for a table
    */
   private static calculateCapacityFit(partySize: number, table: Table): number {
-    const capacityUtilization = partySize / table.capacity.max;
     const capacityFit = 1 - Math.abs(partySize - (table.capacity.min + table.capacity.max) / 2) / table.capacity.max;
     return Math.round(capacityFit * 100);
   }

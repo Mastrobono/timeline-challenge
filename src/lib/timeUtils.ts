@@ -1,4 +1,4 @@
-import { addMinutes, differenceInMinutes, format } from 'date-fns';
+import { format } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { TimelineConfig, Reservation } from '@/types';
 
@@ -15,7 +15,6 @@ export function slotToMinutes(slotIndex: number, config: TimelineConfig): number
  */
 export function slotToIso(slotIndex: number, config: TimelineConfig, baseDate?: string): string {
   const slotsPerDay = getSlotsPerDay(config);
-  const dayIndex = Math.floor(slotIndex / slotsPerDay);
   const daySlotIndex = slotIndex % slotsPerDay;
   
   // Use baseDate if provided, otherwise use config.date
@@ -101,6 +100,18 @@ export function getSlotsPerDay(config: TimelineConfig): number {
 }
 
 /**
+ * Parse a date string (YYYY-MM-DD) to a Date object in local time
+ * This ensures consistent date parsing across all calendar components
+ * by always creating the date in local timezone, not UTC
+ */
+export function parseDateString(dateString: string): Date {
+  // Parse the date components
+  const [year, month, day] = dateString.split('-').map(Number);
+  // Create date in local time (month is 0-indexed in Date constructor)
+  return new Date(year, month - 1, day);
+}
+
+/**
  * Get today's date in the restaurant timezone
  */
 export function getTodayInTimezone(timezone: string): string {
@@ -169,12 +180,15 @@ export function getCurrentTimePosition(config: TimelineConfig): number | null {
 }
 
 /**
- * Format a date string for display in the restaurant timezone
+ * Format a date string for display
+ * Uses parseDateString to ensure consistent date parsing with calendars
+ * Shows the same date that calendars use, without timezone conversion
  */
 export function formatDateForDisplay(dateString: string, timezone: string): string {
-  const date = new Date(dateString + 'T00:00:00Z');
-  const zonedDate = toZonedTime(date, timezone);
-  return format(zonedDate, 'EEE, MMM d yyyy');
+  // Use parseDateString to create date in local time, same as calendars
+  const date = parseDateString(dateString);
+  // Format directly without timezone conversion to match calendar display
+  return format(date, 'EEE, MMM d yyyy');
 }
 
 /**

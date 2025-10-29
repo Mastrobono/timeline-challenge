@@ -1,14 +1,13 @@
-import React, { forwardRef, useMemo, useEffect } from 'react';
-import { addDays, startOfWeek, format, parseISO } from 'date-fns';
+import React, { forwardRef, useMemo } from 'react';
+import { addDays, format, parseISO } from 'date-fns';
 import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from '@heroicons/react/24/outline';
 import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
 import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
 import { ROW_HEIGHT } from '@/lib/constants';
-import useTimelineStore, { getValidReservationsForSector } from '@/store/useTimelineStore';
+import useTimelineStore from '@/store/useTimelineStore';
 import TimeHeader from './TimeHeader';
 import TableRow from './TableRow';
 import MonthView from './MonthView';
-import EnhancedToolbar from './EnhancedToolbar';
 
 // Helper function to calculate contrast color
 const getContrastColor = (hexColor: string, opacity: number = 0.05): string => {
@@ -58,8 +57,6 @@ interface TimelineLayoutProps {
 
 const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
   ({ config, tables, reservations, sectors, dragState, selectedSlot, editingReservation, previewReservation, onSlotClick, onEditClick, onDuplicateClick, onDeleteClick, onCreateReservation, scrollContainerRef, selectedSectors = [], searchTerm = '', selectedStatuses = [] }, ref) => {
-  // Debug logging for tests
-  console.log('TimelineLayout component rendered');
   
   // Use store data if props are not provided
   const store = useTimelineStore();
@@ -83,11 +80,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
   const finalTables = tables || storeTables;
   const finalReservations = reservations || storeReservations;
   const finalSectors = sectors || storeSectors;
-  
-  // Debug logging for tests
-  console.log('TimelineLayout - Tables:', finalTables.length, finalTables.map(t => t.id));
-  console.log('TimelineLayout - Reservations:', finalReservations.length, finalReservations.map(r => r.id));
-    
     // Create default config if not provided - ALWAYS use restaurantConfig from store
     const defaultConfig: TimelineConfig = {
       date: visibleDate,
@@ -105,20 +97,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     
     // Filter reservations based on viewMode, visibleDate, timezone, sectors, search, and status
     const filteredReservations = useMemo(() => {
-      // Debug logging for tests
-      if (process.env.NODE_ENV === 'test') {
-        console.log('TimelineLayout - Filtering reservations:', {
-          totalReservations: finalReservations.length,
-          viewMode,
-          visibleDate,
-          reservations: finalReservations.map(r => ({
-            id: r.id,
-            startTime: r.startTime,
-            date: r.startTime?.split('T')[0],
-            tableId: r.tableId
-          }))
-        });
-      }
       
       // First filter by date
       const dateFilteredReservations = finalReservations.filter(reservation => {
@@ -202,25 +180,9 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
         }
       }
       
-      // Debug logging for tests
-      if (process.env.NODE_ENV === 'test') {
-        console.log('TimelineLayout - Filter results:', {
-          dateFiltered: dateFilteredReservations.length,
-          timezoneFiltered: timezoneFilteredReservations.length,
-          sectorFiltered: sectorFiltered.length,
-          searchFiltered: searchFiltered.length,
-          finalFiltered: statusFiltered.length,
-          finalReservations: statusFiltered.map(r => ({
-            id: r.id,
-            startTime: r.startTime,
-            date: r.startTime?.split('T')[0],
-            tableId: r.tableId
-          }))
-        });
-      }
       
       return statusFiltered;
-    }, [finalReservations, visibleDate, viewMode, finalConfig.timezone, finalConfig, store.restaurantConfig, selectedSectors, searchTerm, selectedStatuses, finalTables, store.sectorsById]);
+    }, [finalReservations, visibleDate, viewMode, finalConfig, store.restaurantConfig, selectedSectors, searchTerm, selectedStatuses, finalTables, store.sectorsById]);
     
     
     // Calculate timeline dimensions based on view mode
@@ -266,19 +228,6 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     const getReservationsForTable = (tableId: string) => {
       const tableReservations = filteredReservations.filter(res => res.tableId === tableId);
       
-      // Debug logging for tests
-      if (process.env.NODE_ENV === 'test') {
-        console.log('TimelineLayout - getReservationsForTable:', {
-          tableId,
-          filteredReservationsCount: filteredReservations.length,
-          tableReservationsCount: tableReservations.length,
-          tableReservations: tableReservations.map(r => ({
-            id: r.id,
-            tableId: r.tableId,
-            startTime: r.startTime
-          }))
-        });
-      }
       
       // Add preview reservation if it exists and matches this table
       if (previewReservation && previewReservation.tableId === tableId) {

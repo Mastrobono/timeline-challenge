@@ -33,7 +33,15 @@ vi.mock('@/store/useTimelineStore', () => ({
 }));
 
 describe('BulkImportService', () => {
-  let mockStore: any;
+  let mockStore: {
+    tablesById: Record<string, Table>;
+    sectorsById: Record<string, Sector>;
+    reservationsById: Record<string, Reservation>;
+    restaurantConfig: RestaurantConfig;
+    addReservation: (reservation: Reservation) => void;
+    updateReservation: (id: string, updates: Partial<Reservation>) => void;
+    bulkImportReservations: (reservations: Reservation[]) => void;
+  };
 
   beforeEach(() => {
     mockStore = {
@@ -258,11 +266,11 @@ csv-1,table-1,CSV Customer,555-0002,csv@example.com,4,2025-01-15T19:00:00-05:00,
       }));
       
       // Add required static properties
-      (mockFileReader as any).EMPTY = 0;
-      (mockFileReader as any).LOADING = 1;
-      (mockFileReader as any).DONE = 2;
+      (mockFileReader as typeof FileReader).EMPTY = 0;
+      (mockFileReader as typeof FileReader).LOADING = 1;
+      (mockFileReader as typeof FileReader).DONE = 2;
       
-      window.FileReader = mockFileReader as any;
+      window.FileReader = mockFileReader as typeof FileReader;
 
       const result = await BulkImportService.importFromCSV(mockFile as File);
 

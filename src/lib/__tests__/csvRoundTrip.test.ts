@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BulkImportService } from '@/lib/bulkImportService';
 import { generateTablesAndSectors, generateReservationsInTimezone, generateRestaurantConfig } from '@/lib/seedGenerator';
-import type { Reservation, Table, Sector, RestaurantConfig } from '@/types';
+import type { Reservation, RestaurantConfig, Table, Sector } from '@/types';
 
 describe('CSV Round-trip Functionality', () => {
   let testReservations: Reservation[];
+  let testConfig: RestaurantConfig;
   let testTables: Table[];
   let testSectors: Sector[];
-  let testConfig: RestaurantConfig;
 
   beforeEach(() => {
     // Generate test data

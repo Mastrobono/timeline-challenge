@@ -1,15 +1,14 @@
 import React from 'react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 import useTimelineStore from '@/store/useTimelineStore';
-import { ReservationFilterService } from '@/lib/reservationFilterService';
-import { filterReservationsByTimezone } from '@/lib/timeUtils';
+import { filterReservationsByTimezone, parseDateString } from '@/lib/timeUtils';
 
 export default function MonthView() {
   const { ui, setVisibleDate, setViewMode, reservationsById, restaurantConfig } = useTimelineStore();
-  const { visibleDate, startHour } = ui;
+  const { visibleDate } = ui;
 
-  const currentDate = new Date(visibleDate);
+  const currentDate = parseDateString(visibleDate);
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   

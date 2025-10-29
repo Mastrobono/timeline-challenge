@@ -2,11 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   HomeIcon,
@@ -15,6 +13,7 @@ import { XMarkIcon as XMarkIconSolid } from '@heroicons/react/20/solid'
 import useTimelineStore from '@/store/useTimelineStore'
 import { addMonths, startOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from 'date-fns'
 import type { Sector, ReservationStatus } from '@/types'
+import { parseDateString } from '@/lib/timeUtils'
 
 interface SidebarProps {
   sidebarOpen: boolean
@@ -55,8 +54,6 @@ function classNames(...classes: (string | boolean | undefined)[]) {
 }
 
 export default function Sidebar({
-  sidebarOpen,
-  setSidebarOpen,
   sidebarCollapsed,
   setSidebarCollapsed,
   sectors = [],
@@ -73,8 +70,8 @@ export default function Sidebar({
   const { restaurantConfig, ui, setVisibleDate } = useTimelineStore()
   const { visibleDate } = ui
 
-  // Calendar state
-  const [currentMonth, setCurrentMonth] = useState(new Date(visibleDate))
+  // Calendar state - use parseDateString for consistent timezone handling
+  const [currentMonth, setCurrentMonth] = useState(parseDateString(visibleDate))
 
   // Calculate active filters count
   const activeFiltersCount = useMemo(() => {
@@ -96,7 +93,7 @@ export default function Sidebar({
   }
 
   const calendarDays = generateCalendarDays()
-  const selectedDate = new Date(visibleDate + 'T00:00:00') // Force local timezone
+  const selectedDate = parseDateString(visibleDate) // Use consistent parsing
 
   const handleDateClick = (date: Date) => {
     // Use local date to avoid timezone issues
@@ -109,11 +106,11 @@ export default function Sidebar({
   }
 
   const handlePrevMonth = () => {
-    setCurrentMonth(prev => addMonths(prev, -1))
+    setCurrentMonth((prev: Date) => addMonths(prev, -1))
   }
 
   const handleNextMonth = () => {
-    setCurrentMonth(prev => addMonths(prev, 1))
+    setCurrentMonth((prev: Date) => addMonths(prev, 1))
   }
 
   return (

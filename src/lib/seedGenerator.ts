@@ -1,5 +1,5 @@
 import { addDays, addMinutes } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { fromZonedTime } from 'date-fns-tz';
 import type { Table, Sector, Reservation, RestaurantConfig, ReservationStatus } from '@/types';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 
@@ -12,7 +12,7 @@ export function generateReservationsInTimezone(
   sectors: Sector[],
   restaurantConfig: RestaurantConfig,
   timezone: string,
-  count: number = 900 // 10 reservations per day × 90 days
+  count = 900 // 10 reservations per day × 90 days
 ): Reservation[] {
   const today = new Date();
   
@@ -20,7 +20,6 @@ export function generateReservationsInTimezone(
   const { startHour, endHour } = restaurantConfig.operatingHours;
   const slotMinutes = restaurantConfig.slotConfiguration.slotMinutes;
   const slotsPerHour = 60 / slotMinutes;
-  const totalSlotsPerDay = (endHour - startHour) * slotsPerHour;
   
   // Generate exactly 10 reservations per day for 90 days (3 months)
   const reservationsPerDay = 10;
@@ -313,6 +312,21 @@ export function generateValidReservationsInTimezone(
         )
       );
         
+        // Generate random status with weighted distribution
+        const generateRandomStatus = (): ReservationStatus => {
+          const statusOptions: ReservationStatus[] = ['CONFIRMED', 'PENDING', 'SEATED', 'FINISHED', 'CANCELLED'];
+          const statusWeights = [0.6, 0.15, 0.1, 0.1, 0.05]; // CONFIRMED most common, CANCELLED least common
+          const random = Math.random();
+          let cumulative = 0;
+          for (let i = 0; i < statusOptions.length; i++) {
+            cumulative += statusWeights[i];
+            if (random <= cumulative) {
+              return statusOptions[i];
+            }
+          }
+          return 'CONFIRMED' as ReservationStatus; // fallback
+        };
+        
         const reservation: Reservation = {
         id: `res-${dayOffset}-${validReservationsForDay}-${Date.now()}`,
           tableId: table.id,
@@ -321,7 +335,7 @@ export function generateValidReservationsInTimezone(
           startTime: utcStartTime.toISOString(),
           endTime: utcEndTime.toISOString(),
           durationMinutes: durationMinutesSimple,
-        status: 'CONFIRMED',
+        status: generateRandomStatus(),
         priority: customer.priority,
         notes: customer.notes,
         preferredSectorId: customer.preferredSectorId,
@@ -350,7 +364,7 @@ export function generateValidReservationsInTimezone(
             occupiedSlots[tableDayKey].delete(slot);
           }
         }
-      } catch (error) {
+      } catch {
         // If validation throws an error, unmark the slots
         for (let slot = startSlotIndex; slot < endSlotIndex; slot++) {
           occupiedSlots[tableDayKey].delete(slot);
@@ -631,7 +645,7 @@ export function generateTablesAndSectors() {
 /**
  * Generate restaurant config with random hours and restaurant name
  */
-export function generateRestaurantConfig(timezone: string): RestaurantConfig {
+export function generateRestaurantConfig(_timezone: string): RestaurantConfig {
   const restaurantNames = [
     'Bistro Central',
     'Café del Sol',

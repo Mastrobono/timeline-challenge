@@ -19,7 +19,6 @@ const zoomLevels = [
 ]
 
 export default function EnhancedToolbar({
-  onSidebarToggle,
   zoomLevel,
   onZoomChange,
 }: EnhancedToolbarProps) {

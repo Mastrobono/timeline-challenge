@@ -26,7 +26,7 @@ interface TableRowProps {
 }
 
 export default function TableRow({ table, reservations, config, dragState, selectedSlot, editingReservation, viewMode = 'day', onSlotClick, onEditClick, onDuplicateClick, onDeleteClick, onCreateReservation }: TableRowProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: table.id,
   });
 
@@ -131,7 +131,7 @@ export default function TableRow({ table, reservations, config, dragState, selec
   };
 
   // Handle mouse up to complete drag-to-create
-  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseUp = () => {
     if (!isDragging || !dragStart || !dragEnd) {
       setIsDragging(false);
       setDragStart(null);
@@ -143,7 +143,21 @@ export default function TableRow({ table, reservations, config, dragState, selec
     if (hasDragged && onCreateReservation) {
       // Calculate start and end times
       const startSlotIndex = Math.min(dragStart.slotIndex, dragEnd.slotIndex);
-      const endSlotIndex = Math.max(dragStart.slotIndex, dragEnd.slotIndex);
+      let endSlotIndex = Math.max(dragStart.slotIndex, dragEnd.slotIndex);
+      
+      // Determine which position to use for rounding (the "end" of the drag)
+      // If dragging right or same slot, use dragEnd; if dragging left, use dragStart (which is the end)
+      const isDraggingRight = dragEnd.slotIndex >= dragStart.slotIndex;
+      const endPositionX = isDraggingRight ? dragEnd.x : dragStart.x;
+      
+      // Check if we're in the second half of the slot for the end position
+      // If we're past 50% of the slot, round up to the next slot
+      const slotPositionInDay = endPositionX % config.slotWidth;
+      
+      // If we're in the second half of the slot (past 50%), round up to next slot
+      if (slotPositionInDay > config.slotWidth / 2) {
+        endSlotIndex += 1;
+      }
       
       // Ensure minimum duration of 1 slot (15 minutes)
       const finalEndSlotIndex = Math.max(endSlotIndex, startSlotIndex + 1);

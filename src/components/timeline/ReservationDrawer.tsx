@@ -5,7 +5,7 @@ import { Dialog, DialogPanel, Listbox, ListboxButton, ListboxOption, ListboxOpti
 import { XMarkIcon, ChevronUpDownIcon, CheckIcon, SparklesIcon, ClockIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import type { Table, Reservation, ReservationStatus, Priority, TimelineConfig, Sector } from '@/types';
+import type { Table, Reservation, ReservationStatus, Priority, TimelineConfig } from '@/types';
 import { STATUS_COLORS } from '@/lib/constants';
 import { AutoSchedulingService, type TableSuggestion, type TimeSlot, type VIPAnalysis } from '@/lib/autoSchedulingService';
 import useTimelineStore from '@/store/useTimelineStore';
@@ -192,10 +192,10 @@ export default function ReservationDrawer({
     if (!formData.customerPhone && !formData.customerEmail) return;
     
     const existingReservations = Object.values(reservationsById);
-    const customerHistory = existingReservations.filter(r => 
-      r.customer.phone === formData.customerPhone ||
-      r.customer.email === formData.customerEmail
-    );
+    
+    // Filter customer history - this is just for passing to the service
+    // The service will do proper filtering with non-empty checks
+    const customerHistory = existingReservations;
     
     const analysis = AutoSchedulingService.analyzeVIPStatus(
       {
@@ -208,7 +208,11 @@ export default function ReservationDrawer({
         priority: formData.priority.id as Priority
       },
       customerHistory,
-      { minHistoryReservations: 2, vipThreshold: 0.6 }
+      { 
+        minHistoryReservations: 3, // Require at least 3 previous reservations
+        vipThreshold: 0.7, // More strict threshold - require 70% confidence
+        excludeReservationId: reservation?.id // Exclude current reservation if editing
+      }
     );
     
     setVipAnalysis(analysis);
@@ -262,6 +266,7 @@ export default function ReservationDrawer({
     if (formData.customerPhone || formData.customerEmail) {
       analyzeVIPStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.customerPhone, formData.customerEmail, formData.partySize]);
 
   // Update preview reservation in real-time when form data changes
@@ -302,7 +307,8 @@ export default function ReservationDrawer({
         onUpdatePreview(updatedPreview);
       }
     }
-  }, [formData, onUpdatePreview, table, startTime]); // Removed previewReservation from dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, onUpdatePreview, table, startTime]);
 
   // Reset form when modal opens with new data
   useEffect(() => {
@@ -331,9 +337,34 @@ export default function ReservationDrawer({
           selectedTableId: reservation.tableId,
           selectedSectorId: table?.sectorId || ''
         });
-      } else if (table) {
-        // Create mode - reset to defaults
-        const initialDuration = 120; // Default duration
+      } else if (table && startTime) {
+        // Create mode - calculate duration from startTime and endTime if provided
+        // Otherwise use default duration
+        let initialDuration = 120; // Default duration
+        
+        // If endTime is provided (e.g., from drag-to-create), calculate duration
+        if (endTime) {
+          const start = new Date(startTime);
+          const end = new Date(endTime);
+          const calculatedDuration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+          
+          // Round to nearest available option in the select (30, 60, 90, 120, 150, 180, 240)
+          const availableDurations = [30, 60, 90, 120, 150, 180, 240];
+          const minDuration = Math.max(30, calculatedDuration);
+          
+          // Find the closest available duration
+          let closestDuration = 120; // default
+          let minDiff = Infinity;
+          for (const duration of availableDurations) {
+            const diff = Math.abs(duration - minDuration);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestDuration = duration;
+            }
+          }
+          
+          initialDuration = closestDuration;
+        }
         
         setFormData({
           customerName: '',
@@ -351,27 +382,9 @@ export default function ReservationDrawer({
         });
       }
     }
-  }, [isOpen, table, reservation]);
+  }, [isOpen, table, reservation, startTime, endTime]);
 
 
-  // Calculate duration from start and end times
-  const calculateDuration = (startTimeStr: string, endTimeStr: string) => {
-    if (!startTimeStr || !endTimeStr) return 120;
-    
-    const [startHour, startMinute] = startTimeStr.split(':').map(Number);
-    const [endHour, endMinute] = endTimeStr.split(':').map(Number);
-    
-    const startMinutes = startHour * 60 + startMinute;
-    let endMinutes = endHour * 60 + endMinute;
-    
-    // Handle overnight (if end time is earlier than start time, assume next day)
-    if (endMinutes < startMinutes) {
-      endMinutes += 24 * 60; // Add 24 hours
-    }
-    
-    const duration = endMinutes - startMinutes;
-    return Math.max(30, duration); // Minimum 30 minutes
-  };
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -620,7 +633,7 @@ export default function ReservationDrawer({
                         </button>
                       </div>
                       <div className="space-y-2">
-                        {tableSuggestions.map((suggestion, index) => (
+                        {tableSuggestions.map((suggestion) => (
                           <div
                             key={suggestion.table.id}
                             className={`p-3 rounded-md cursor-pointer transition-colors ${
@@ -689,8 +702,7 @@ export default function ReservationDrawer({
                             <div className="flex items-center justify-between mb-2">
                               <div>
                                 <div className="text-sm font-medium text-white">
-                                  {format(toZonedTime(new Date(slot.startTime), config.timezone), 'HH:mm')} - 
-                                  {format(toZonedTime(new Date(slot.endTime), config.timezone), 'HH:mm')}
+                                  {format(toZonedTime(new Date(slot.startTime), config.timezone), 'HH:mm')} - {format(toZonedTime(new Date(slot.endTime), config.timezone), 'HH:mm')}
                                 </div>
                                 <div className="text-xs text-gray-300">
                                   Duration: {slot.durationMinutes} minutes

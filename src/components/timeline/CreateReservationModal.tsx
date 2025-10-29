@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Table, Reservation, ReservationStatus, Priority, TimelineConfig } from '@/types';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
 import { canReserveSlot } from '@/lib/conflictService';
-import { slotToIso, isoToSlotIndex } from '@/lib/timeUtils';
+import { isoToSlotIndex } from '@/lib/timeUtils';
 import useTimelineStore from '@/store/useTimelineStore';
 import { addMinutes } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';

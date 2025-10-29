@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { create } from 'zustand';
 import TimelineLayout from '../TimelineLayout';
 import type { TimelineConfig, Table, Sector, Reservation } from '@/types';
@@ -113,13 +113,13 @@ vi.mock('@/lib/timeUtils', () => ({
 
 // Mock date-fns-tz
 vi.mock('date-fns-tz', () => ({
-  toZonedTime: vi.fn((date: Date, timezone: string) => {
+  toZonedTime: vi.fn((date: Date, _timezone: string) => {
     // For tests, we need to simulate timezone conversion
     // The test data uses -03:00 offset, so we need to convert UTC to local time
     // If the date is already in the correct timezone, return it as-is
     return date;
   }),
-  fromZonedTime: vi.fn((date: Date, timezone: string) => date),
+  fromZonedTime: vi.fn((date: Date, _timezone: string) => date),
 }));
 
 // Mock dnd-kit

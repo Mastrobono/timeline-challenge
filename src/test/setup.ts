@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 // Mock date-fns-tz to handle timezone conversions in tests
 vi.mock('date-fns-tz', () => ({
-  toZonedTime: vi.fn((date: Date, timezone: string) => {
+  toZonedTime: vi.fn((date: Date, _timezone: string) => {
     // For tests, we need to simulate timezone conversion
     // The test data uses -03:00 offset, so we need to convert UTC to local time
     // If the date is already in the correct timezone, return it as-is
@@ -14,5 +14,5 @@ vi.mock('date-fns-tz', () => ({
     }
     return date;
   }),
-  fromZonedTime: vi.fn((date: Date, timezone: string) => date),
+  fromZonedTime: vi.fn((date: Date, _timezone: string) => date),
 }));
