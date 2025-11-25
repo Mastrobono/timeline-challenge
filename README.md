@@ -12,12 +12,6 @@ Thank you for your time, and enjoy!
 
 ## Showcase
 
-### Video Demonstration (10 min)<sup> hope it works for you </sup>
-
-
-
-**[➡️ Click here to open the Video Walkthrough](https://youtu.be/hSTqLx7B37M)**
-
 ### Key Features Screenshots
 
 | Home Dashboard | Interactive Timeline | AI Scheduling Assistant |
