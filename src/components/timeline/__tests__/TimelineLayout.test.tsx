@@ -107,7 +107,10 @@ vi.mock('date-fns-tz', () => ({
 }));
 
 // Mock the time utilities
-vi.mock('@/lib/timeUtils', () => ({
+// Partial mock: keep every real helper (parseDateString, getTodayInTimezone, ...)
+// and override only what these tests need to control.
+vi.mock('@/lib/timeUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/timeUtils')>()),
   slotToPx: (slotIndex: number, config: TimelineConfig) => slotIndex * config.slotWidth,
   pxToSlot: (x: number, config: TimelineConfig) => Math.floor(x / config.slotWidth),
   getSlotsPerDay: (config: TimelineConfig) => (config.endHour - config.startHour) * (60 / config.slotMinutes),

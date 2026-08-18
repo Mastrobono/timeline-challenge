@@ -378,7 +378,11 @@ describe('AutoSchedulingService', () => {
 
       expect(analysis.isVIP).toBe(false); // Not VIP but large group
       expect(analysis.suggestedPriority).toBe('LARGE_GROUP');
-      expect(analysis.reasons).toContain('Large party size: 10 people');
+      // A first-time large group is qualified as LARGE_GROUP rather than VIP, so the
+      // reason carries that suffix.
+      expect(
+        analysis.reasons.some(reason => reason.startsWith('Large party size: 10 people'))
+      ).toBe(true);
     });
 
     it('should detect VIP from notes', () => {

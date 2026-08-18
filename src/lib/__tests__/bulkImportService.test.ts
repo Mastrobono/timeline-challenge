@@ -248,7 +248,7 @@ csv-1,table-1,CSV Customer,555-0002,csv@example.com,4,2025-01-15T19:00:00-05:00,
       expect(result.errors[0]).toContain('Network error');
     });
 
-    it.skip('should handle file reading errors during CSV import', async () => {
+    it('should handle file reading errors during CSV import', async () => {
       // Mock file that will cause read error
       const mockFile = {
         name: 'test.csv',
@@ -256,21 +256,25 @@ csv-1,table-1,CSV Customer,555-0002,csv@example.com,4,2025-01-15T19:00:00-05:00,
         size: 0
       } as File;
 
-      // Mock FileReader to throw error
+      // FileReader stub whose readAsText actually fails, so the promise in
+      // readFileContent rejects instead of hanging forever.
       const originalFileReader = window.FileReader;
-      const mockFileReader = vi.fn().mockImplementation(() => ({
-        readAsText: vi.fn(),
-        onerror: null,
-        onload: null,
-        result: null
-      }));
-      
-      // Add required static properties
-      (mockFileReader as typeof FileReader).EMPTY = 0;
-      (mockFileReader as typeof FileReader).LOADING = 1;
-      (mockFileReader as typeof FileReader).DONE = 2;
-      
-      window.FileReader = mockFileReader as typeof FileReader;
+      class FailingFileReader {
+        onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+        onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+        result: string | null = null;
+        error = new DOMException('Simulated read failure', 'NotReadableError');
+        readAsText() {
+          setTimeout(() => {
+            this.onerror?.call(
+              this as unknown as FileReader,
+              new ProgressEvent('error') as ProgressEvent<FileReader>
+            );
+          }, 0);
+        }
+      }
+
+      window.FileReader = FailingFileReader as unknown as typeof FileReader;
 
       const result = await BulkImportService.importFromCSV(mockFile as File);
 

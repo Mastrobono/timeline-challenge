@@ -43,3 +43,9 @@ next-env.d.ts
 # seed files
 src/data/seed-small.ts
 src/data/seed-large.ts
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

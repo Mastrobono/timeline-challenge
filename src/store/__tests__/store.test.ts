@@ -282,7 +282,7 @@ describe('useTimelineStore', () => {
   });
 });
 
-describe.skip('findInsertIndex helper', () => {
+describe('findInsertIndex helper', () => {
   it('should return 0 for empty array', () => {
     const reservation = createTestReservation('res1', 'table1', '2025-10-23T10:00:00-03:00', '2025-10-23T12:00:00-03:00', 'John', 2);
     const index = findInsertIndex([], reservation, {});
@@ -310,7 +310,9 @@ describe.skip('findInsertIndex helper', () => {
   it('should return correct index for insertion in middle', () => {
     const reservationsById = {
       'res1': createTestReservation('res1', 'table1', '2025-10-23T10:00:00-03:00', '2025-10-23T12:00:00-03:00', 'Alice', 2),
-      'res2': createTestReservation('res2', 'table1', '2025-10-23T30:00:00-03:00', '2025-10-23T32:00:00-03:00', 'Charlie', 2),
+      // 'T30:00:00' is not a valid hour; it parsed to Invalid Date and made
+      // every comparison NaN. Charlie simply sits after Bob.
+      'res2': createTestReservation('res2', 'table1', '2025-10-23T22:00:00-03:00', '2025-10-23T23:30:00-03:00', 'Charlie', 2),
     };
     const newReservation = createTestReservation('res3', 'table1', '2025-10-23T20:00:00-03:00', '2025-10-23T22:00:00-03:00', 'Bob', 2);
     const index = findInsertIndex(['res1', 'res2'], newReservation, reservationsById);

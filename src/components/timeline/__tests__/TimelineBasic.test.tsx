@@ -58,7 +58,10 @@ vi.mock('@/store/useTimelineStore', () => ({
 }));
 
 // Mock time utilities
-vi.mock('@/lib/timeUtils', () => ({
+// Partial mock: keep every real helper (parseDateString, getTodayInTimezone, ...)
+// and override only what these tests need to control.
+vi.mock('@/lib/timeUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/timeUtils')>()),
   slotToIso: vi.fn((slotIndex: number) => {
     const baseDate = new Date('2025-10-23T00:00:00');
     const minutesFromMidnight = slotIndex * 15;
