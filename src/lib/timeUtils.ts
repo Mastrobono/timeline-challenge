@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { TimelineConfig, Reservation } from '@/types';
 
@@ -46,28 +46,28 @@ export function slotToIso(slotIndex: number, config: TimelineConfig, baseDate?: 
  * This version handles multi-day views by calculating the absolute slot index
  */
 export function isoToSlotIndex(iso: string, config: TimelineConfig): number {
-  const utcDate = new Date(iso);
-  const zonedDate = toZonedTime(utcDate, config.timezone);
-  
-  // Get the date part in the restaurant timezone - parse as UTC to avoid timezone issues
-  const configDate = new Date(config.date + 'T00:00:00Z');
-  const zonedConfigDate = toZonedTime(configDate, config.timezone);
-  
-  // Calculate the day difference
-  const dayDiff = Math.floor((zonedDate.getTime() - zonedConfigDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Calculate slot positions based on timezone-aware time
-  const startHour = zonedDate.getHours();
-  const startMinute = zonedDate.getMinutes();
-  
-  // Calculate slot index within the day
-  const daySlotIndex = ((startHour - config.startHour) * 4) + (startMinute / 15);
-  
-  // Calculate absolute slot index including day offset
-  const slotsPerDay = getSlotsPerDay(config);
-  const absoluteSlotIndex = daySlotIndex + (dayDiff * slotsPerDay);
-  
-  return Math.max(0, absoluteSlotIndex);
+  const instant = new Date(iso);
+  if (Number.isNaN(instant.getTime())) return 0;
+
+  const zonedDate = toZonedTime(instant, config.timezone);
+  if (Number.isNaN(zonedDate.getTime())) return 0;
+
+  // Day offset is a difference in CALENDAR DAYS in the restaurant timezone.
+  // Deriving it from millisecond arithmetic against `config.date` parsed as UTC
+  // midnight was off by one for every negative-offset timezone (UTC midnight on
+  // the 15th is 21:00 on the 14th in Buenos Aires), which pushed multi-day
+  // reservations past their own end slot and made them occupy nothing.
+  const dayDiff = differenceInCalendarDays(
+    parseDateString(format(zonedDate, 'yyyy-MM-dd')),
+    parseDateString(config.date)
+  );
+
+  const slotsPerHour = 60 / config.slotMinutes;
+  const daySlotIndex =
+    ((zonedDate.getHours() - config.startHour) * slotsPerHour) +
+    (zonedDate.getMinutes() / config.slotMinutes);
+
+  return Math.max(0, daySlotIndex + (dayDiff * getSlotsPerDay(config)));
 }
 
 /**

@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { buildOccupiedSlotsMap, hasConflict, canReserveSlot, getAvailableSlots } from '../conflictService';
+import { isoToSlotIndex } from '@/lib/timeUtils';
 import { Reservation, TimelineConfig, OccupiedSlotsMap } from '@/types';
 
-describe.skip('conflictService', () => {
+describe('conflictService', () => {
   let config: TimelineConfig;
   let reservations: Reservation[];
 
   beforeEach(() => {
     config = {
       date: '2025-01-15',
-      startHour: 8,
+      // Slot indices are relative to startHour. These fixtures are written in
+      // midnight-based slots (10:00 -> slot 40), so the day starts at 0.
+      startHour: 0,
       endHour: 24,
       slotMinutes: 15,
       slotWidth: 60,
@@ -223,9 +226,9 @@ describe.skip('conflictService', () => {
         updatedAt: '2025-01-15T09:00:00-03:00'
       };
 
+      // 08:00-20:00 is 12h = 48 slots, so it covers 32..79 — the whole queried range.
       const available = getAvailableSlots([fullDayReservation], 'table-3', 32, 80, config);
-      // The reservation only occupies slots 32-63, not 32-80, so slots 64-79 are available
-      expect(available).toEqual([[64, 80]]);
+      expect(available).toEqual([]);
     });
 
     it('should handle single available slot', () => {
@@ -301,19 +304,22 @@ describe.skip('conflictService', () => {
         updatedAt: '2025-01-15T09:00:00-03:00'
       };
 
+      // 23:00 on the config date is slot 92 (23 * 4). 01:00 the next day is slot
+      // 4 of day 1, i.e. absolute slot 100. The booking therefore occupies the
+      // eight slots 92..99 and must NOT wrap or collapse to nothing.
       const result = buildOccupiedSlotsMap([multiDayReservation], config);
-      expect(result['table-6']).toBeDefined();
-      // The reservation spans from 23:00 to 01:00 next day
-      // In our current implementation, this results in slots 156-68 (absolute slots)
-      // But the test expects slots 92-95 (day slots)
-      // Let's check what slots are actually occupied
       const occupiedSlots = Array.from(result['table-6']).sort((a, b) => a - b);
-      console.log('Multi-day reservation occupied slots:', occupiedSlots);
-      
-      // The test expects slot 92 to be occupied, but our function calculates slot 156
-      // This suggests the test is expecting a different calculation
-      // For now, let's check if any slots are occupied
-      expect(result['table-6'].size).toBeGreaterThan(0);
+
+      expect(occupiedSlots).toEqual([92, 93, 94, 95, 96, 97, 98, 99]);
+    });
+
+    it('places a reservation on the config date at its in-day slot (no day-offset drift)', () => {
+      // Regression: config.date used to be parsed as UTC midnight, which in a
+      // negative-offset timezone resolved to the previous day and added a full
+      // day of slots to every index.
+      expect(isoToSlotIndex('2025-01-15T23:00:00-03:00', config)).toBe(92);
+      expect(isoToSlotIndex('2025-01-15T00:00:00-03:00', config)).toBe(0);
+      expect(isoToSlotIndex('2025-01-16T01:00:00-03:00', config)).toBe(100);
     });
   });
 });
