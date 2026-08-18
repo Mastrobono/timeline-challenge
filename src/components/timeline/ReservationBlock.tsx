@@ -235,6 +235,34 @@ export default function ReservationBlock({ reservation, config, dragState, table
     }
   };
   
+  // True while this block is the one being dragged AND the placement under the
+  // cursor would be rejected on drop.
+  const isInvalidPlacement =
+    dragState?.isValidPlacement === false &&
+    !!dragState.activeId?.includes(reservation.id);
+
+  // Screen readers get the whole booking in one sentence; sighted users get the
+  // same information from the block's layout and its tooltip.
+  const accessibleLabel = [
+    customer.name,
+    `party of ${partySize}`,
+    timeString,
+    table.name,
+    reservation.status.toLowerCase(),
+    priority !== 'STANDARD' ? priority.toLowerCase().replace('_', ' ') : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  // Enter/Space open the editor, matching the double-click affordance for
+  // anyone who cannot drag or double-click.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    e.stopPropagation();
+    onEditClick?.(reservation, table, reservation.startTime);
+  };
+
   // Handle double click on reservation block to edit
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -275,20 +303,41 @@ export default function ReservationBlock({ reservation, config, dragState, table
       {...listeners}
       {...attributes}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={accessibleLabel}
+      aria-invalid={isInvalidPlacement || undefined}
       data-reservation-id={reservation.id}
+      data-invalid-placement={isInvalidPlacement ? 'true' : undefined}
       className={`group absolute left-0 rounded px-6 py-1 text-xs font-medium ${STATUS_COLORS[reservation.status]} text-white border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50' : ''
       } ${
-        dragState?.activeId === `resize-left-${reservation.id}` || 
-        dragState?.activeId === `resize-right-${reservation.id}` 
-          ? 'ring-2 ring-blue-400 ring-opacity-50' 
+        dragState?.activeId === `resize-left-${reservation.id}` ||
+        dragState?.activeId === `resize-right-${reservation.id}`
+          ? 'ring-2 ring-blue-400 ring-opacity-50'
           : ''
       } ${
-        isBeingEdited 
-          ? 'ring-2 ring-yellow-500 ring-opacity-80 border-yellow-500 border-1' 
+        isBeingEdited
+          ? 'ring-2 ring-yellow-500 ring-opacity-80 border-yellow-500 border-1'
+          : ''
+      } ${
+        // Live conflict warning: the drop would be rejected from here.
+        isInvalidPlacement
+          ? 'ring-2 ring-red-500 ring-offset-1 ring-offset-red-200 !bg-red-600'
           : ''
       }`}
     >
+      {isInvalidPlacement && (
+        <span
+          className="absolute -top-2 -right-2 z-50 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-white"
+          title="This slot is not available"
+          aria-hidden="true"
+        >
+          !
+        </span>
+      )}
+
       <div className="flex items-center gap-1 h-full relative ">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

@@ -87,4 +87,10 @@ export interface DragState {
   activeId: string | null;
   delta: { x: number; y: number };
   dragType: 'move' | 'resize-left' | 'resize-right' | null;
+  /**
+   * Whether the placement under the cursor would be accepted. Recomputed as the
+   * gesture crosses slot boundaries so the block can warn before the drop,
+   * rather than only rejecting it afterwards. `null` while not dragging.
+   */
+  isValidPlacement?: boolean | null;
 }
