@@ -2,12 +2,14 @@ import React, { forwardRef, useMemo } from 'react';
 import { addDays, format, parseISO } from 'date-fns';
 import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from '@heroicons/react/24/outline';
 import type { Table, Reservation, Sector, TimelineConfig, DragState } from '@/types';
-import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone } from '@/lib/timeUtils';
+import { getSlotsPerDay, getCurrentTimePosition, filterReservationsByTimezone, formatDateForDisplay } from '@/lib/timeUtils';
+import { TimelineBootstrapService } from '@/lib/timelineBootstrapService';
 import { ROW_HEIGHT } from '@/lib/constants';
 import useTimelineStore from '@/store/useTimelineStore';
 import TimeHeader from './TimeHeader';
 import TableRow from './TableRow';
 import MonthView from './MonthView';
+import TimelineEmptyState from './TimelineEmptyState';
 
 // Helper function to calculate contrast color
 const getContrastColor = (hexColor: string, opacity: number = 0.05): string => {
@@ -70,7 +72,7 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
       return new Date(dateString);
     }
   };
-    const { ui, toggleSectorCollapse } = store;
+    const { ui, toggleSectorCollapse, setVisibleDate } = store;
     const { viewMode, visibleDate, slotWidth, startHour, collapsedSectors } = ui;
     const storeTables = Object.values(store.tablesById);
     const storeReservations = Object.values(store.reservationsById);
@@ -100,11 +102,13 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
       
       // First filter by date
       const dateFilteredReservations = finalReservations.filter(reservation => {
-        // Extract date from startTime (ISO format)
-        const reservationDate = reservation.startTime ? 
-          reservation.startTime.split('T')[0] : // Get YYYY-MM-DD part
-          visibleDate; // Fallback to visibleDate if no startTime
-        
+        // Bucket the reservation into the day it falls on in the restaurant
+        // timezone (not the raw UTC date, which rolls evening bookings over
+        // into the next day and hid them from the grid).
+        const reservationDate = reservation.startTime
+          ? TimelineBootstrapService.getReservationDateKey(reservation, finalConfig.timezone)
+          : visibleDate; // Fallback to visibleDate if no startTime
+
         let isInDateRange = false;
         
         switch (viewMode) {
@@ -185,6 +189,23 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     }, [finalReservations, visibleDate, viewMode, finalConfig, store.restaurantConfig, selectedSectors, searchTerm, selectedStatuses, finalTables, store.sectorsById]);
     
     
+    // An empty grid reads as broken, so offer the nearest day that is not empty.
+    const isFiltered =
+      selectedSectors.length > 0 || searchTerm.length > 0 || selectedStatuses.length > 0;
+
+    const suggestedDate = useMemo(() => {
+      if (filteredReservations.length > 0 || isFiltered) return null;
+      const nearest = TimelineBootstrapService.resolveLandingDate(
+        finalReservations,
+        finalConfig.timezone
+      );
+      return nearest && nearest !== visibleDate ? nearest : null;
+    }, [filteredReservations.length, isFiltered, finalReservations, finalConfig.timezone, visibleDate]);
+
+    const handleClearFilters = () => {
+      window.dispatchEvent(new CustomEvent('clearTimelineFilters'));
+    };
+
     // Calculate timeline dimensions based on view mode
     const slotsPerDay = getSlotsPerDay(finalConfig);
     let totalSlots = slotsPerDay;
@@ -255,18 +276,32 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
     }
 
     return (
-      <div 
+      <div
         ref={ref}
         className="flex flex-col h-full bg-white rounded-md rounded"
         data-testid="timeline-layout"
+        role="grid"
+        aria-label={`Reservations timeline for ${formatDateForDisplay(visibleDate, finalConfig.timezone)}, ${finalConfig.startHour}:00 to ${finalConfig.endHour}:00`}
+        aria-rowcount={finalTables.length}
       >
         {/* Toolbar is rendered at the page level to avoid duplication */}
         
         {/* Scrollable timeline container */}
-        <div 
-          className="flex-1 scrollbar-container rounded-xl relative" 
+        <div
+          className="flex-1 scrollbar-container rounded-xl relative"
           data-testid="timeline-body"
         >
+          {filteredReservations.length === 0 && (
+            <TimelineEmptyState
+              visibleDate={visibleDate}
+              timezone={finalConfig.timezone}
+              suggestedDate={suggestedDate}
+              isFiltered={isFiltered}
+              onGoToSuggestedDate={setVisibleDate}
+              onClearFilters={handleClearFilters}
+            />
+          )}
+
           {/* Overlay div to hide time labels when scrolling horizontally */}
           <div 
             className="absolute top-0 left-0 w-[150px] h-[48px] bg-white z-[999] pointer-events-none"
@@ -299,7 +334,10 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
             }}
           >
             {/* Left sticky column for table names */}
-            <div className="sticky left-0 bg-white border-r border-gray-200 min-w-[150px] z-[41]">
+            <div
+              className="sticky left-0 bg-white border-r border-gray-200 min-w-[150px] z-[41]"
+              data-tour="tables"
+            >
               
               {/* Sectors with grouped table rows */}
               {sortedSectors.map(sector => {
@@ -309,13 +347,16 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                 return (
                   <div key={sector.id} className="border-b border-gray-200">
                     {/* Sector Header - always visible, 30px height */}
-                    <div 
-                      className="flex items-center px-3 py-2 hover:opacity-80 cursor-pointer relative"
-                      style={{ 
+                    <button
+                      type="button"
+                      className="flex w-full items-center px-3 py-2 hover:opacity-80 cursor-pointer relative text-left"
+                      style={{
                         height: '30px',
                         backgroundColor: `${sector.color}0D`
                       }}
                       onClick={() => toggleSectorCollapse(sector.id)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={`${sector.name}, ${sectorTables.length} tables. ${isCollapsed ? 'Expand' : 'Collapse'} sector`}
                     >
                       <div className="flex items-center flex-1">
                         {/* Toggle Icon */}
@@ -341,11 +382,11 @@ const TimelineLayout = forwardRef<HTMLDivElement, TimelineLayoutProps>(
                           >
                             {sector.name}
                           </div>
-                         
+
                         </div>
                       </div>
-                    </div>
-                    
+                    </button>
+
                     {/* Sector Tables - only show if not collapsed */}
                     {!isCollapsed && sectorTables.map(table => (
                       <div 
