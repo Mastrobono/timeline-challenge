@@ -71,3 +71,25 @@ body {
   height: 100%;
   overflow: auto;
 }
+
+/* Respect the OS "reduce motion" setting.
+   Transitions here are decorative (sidebar slide, hover fades, spinners), so
+   they are collapsed rather than removed, keeping state changes instant but
+   still perceivable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible keyboard focus for the timeline's interactive surfaces. Pointer users
+   keep a clean grid; keyboard users always know where they are. */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
