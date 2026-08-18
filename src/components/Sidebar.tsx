@@ -243,7 +243,7 @@ export default function Sidebar({
 
           {/* Search */}
           {!sidebarCollapsed && (
-            <div className="pb-4">
+            <div className="pb-4" data-tour="filters">
               <label className="text-xs font-semibold text-gray-400">Search</label>
               <div className="relative mt-2">
                 <input

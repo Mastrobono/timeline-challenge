@@ -8,6 +8,7 @@ interface EnhancedToolbarProps {
   onSidebarToggle: () => void
   zoomLevel: number
   onZoomChange: (level: number) => void
+  onRestartTour: () => void
 }
 
 const zoomLevels = [
@@ -21,6 +22,7 @@ const zoomLevels = [
 export default function EnhancedToolbar({
   zoomLevel,
   onZoomChange,
+  onRestartTour,
 }: EnhancedToolbarProps) {
   const { ui, restaurantConfig, goToToday, goToPrevPeriod, goToNextPeriod, setViewMode } = useTimelineStore()
   const { visibleDate, viewMode } = ui
@@ -114,6 +116,17 @@ export default function EnhancedToolbar({
               </button>
             </div>
           </div>
+
+          {/* Replay the walkthrough */}
+          <button
+            onClick={onRestartTour}
+            data-testid="restart-tour"
+            aria-label="Show the guided tour"
+            title="Show the guided tour"
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-xs font-semibold text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
+          >
+            ?
+          </button>
 
           {/* View Mode */}
           <div className="flex items-center gap-2">

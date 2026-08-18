@@ -204,16 +204,35 @@ export default function TableRow({ table, reservations, config, dragState, selec
 
   const selectedSlotPosition = getSelectedSlotPosition();
 
+  /**
+   * Keyboard equivalent of clicking an empty slot. Pointer users pick the exact
+   * slot by clicking; keyboard users get the first slot of the visible day and
+   * can adjust the time in the drawer that opens.
+   */
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    onSlotClick?.(table, slotToIso(0, config, getDateForSlot(0)));
+  };
+
   return (
-    <div 
+    <div
       ref={setNodeRef}
       data-table-id={table.id}
       className={`relative border-b border-gray-200 z-40 `}
       style={{ height: `${ROW_HEIGHT}px` }}
+      role="row"
     >
-      <div 
+      <div
         ref={dragRef}
+        data-testid={`table-row-${table.id}`}
+        data-tour={reservations.length === 0 ? 'empty-slot' : undefined}
         className="relative h-full"
+        role="gridcell"
+        tabIndex={0}
+        aria-label={`${table.name}, seats ${table.capacity.min} to ${table.capacity.max}, ${reservations.length} reservation${reservations.length !== 1 ? 's' : ''}. Press Enter to add a reservation.`}
+        onKeyDown={handleKeyDown}
         onClick={handleSlotClick}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
