@@ -12,9 +12,9 @@ import {
   DocumentArrowUpIcon
 } from '@heroicons/react/24/outline';
 import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 import { filterReservationsByTimezone, parseDateString } from '@/lib/timeUtils';
 import { generateTablesAndSectors, generateValidReservationsInTimezone, generateRestaurantConfig } from '@/lib/seedGenerator';
+import { TimelineBootstrapService } from '@/lib/timelineBootstrapService';
 import { BulkImportService } from '@/lib/bulkImportService';
 import useTimelineStore from '@/store/useTimelineStore';
 import { useAutoInitialize } from '@/hooks/useAutoInitialize';
@@ -127,11 +127,13 @@ function HomeContent() {
     
     // Group reservations by date using the SAME filtering logic as TimelineLayout
     const reservationsByDate = reservations.reduce((acc, reservation) => {
-      // Convert UTC reservation time to restaurant timezone to get the correct date
-      const reservationDate = new Date(reservation.startTime);
-      const zonedDate = toZonedTime(reservationDate, restaurantConfig?.timezone || 'UTC');
-      const dateStr = format(zonedDate, 'yyyy-MM-dd');
-      
+      // Same day-bucketing rule the timeline uses, so the calendar count and the
+      // grid can never disagree.
+      const dateStr = TimelineBootstrapService.getReservationDateKey(
+        reservation,
+        restaurantConfig?.timezone || 'UTC'
+      );
+
       // Apply timezone filtering (same as TimelineLayout)
       const config = {
         date: dateStr,
@@ -241,38 +243,38 @@ function HomeContent() {
   const generateNewSeed = useCallback(async () => {
     setIsGenerating(true);
     try {
-      const timezone = 'America/Argentina/Buenos_Aires';
-      
-      // Generate new restaurant config
-      const newConfig = generateRestaurantConfig(timezone);
-      
-      // Generate tables and sectors
+      // Config first, so its (random) timezone drives reservation generation.
+      const newConfig = generateRestaurantConfig();
       const { tables, sectors } = generateTablesAndSectors();
-      
-      // Generate reservations with validation
+
       const reservations = generateValidReservationsInTimezone(
         tables,
         sectors,
         newConfig,
-        timezone,
+        newConfig.timezone,
         10, // 10 reservations per day
         90  // 90 days (3 months)
       );
-      
-      // Update store
+
       store.initializeWithValidation({
         restaurantConfig: newConfig,
         tables,
         sectors,
         reservations
       });
-      
+
+      // Keep the timeline pointed at a day that has bookings.
+      const landingDate = TimelineBootstrapService.resolveLandingDate(
+        reservations,
+        newConfig.timezone
+      );
+      if (landingDate) setVisibleDate(landingDate);
     } catch (error) {
       console.error('Error generating seed:', error);
     } finally {
       setIsGenerating(false);
     }
-  }, [store]);
+  }, [store, setVisibleDate]);
   
   // Export to CSV
   const exportToCSV = async () => {
@@ -385,13 +387,9 @@ function HomeContent() {
     }
   }, [restaurantConfig, store]);
   
-  // Auto-generate seed if no data exists (only once when store is ready)
-  useEffect(() => {
-    if (isInitialized && !hasData && !isGenerating) {
-      generateNewSeed();
-    }
-  }, [isInitialized, hasData, isGenerating, generateNewSeed]);
-  
+  // Seeding when no data exists is owned by useAutoInitialize, so both routes
+  // go through one code path.
+
   if (!isInitialized || isInitializing || (!hasData && isGenerating)) {
     return <LoadingSkeleton />;
   }

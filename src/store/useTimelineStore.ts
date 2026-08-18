@@ -64,27 +64,30 @@ export type TimelineStore = TimelineState & TimelineActions;
  * // New reservation with startSlot: 15 should be inserted at index 1
  * // Result: ["res-001", "res-015", "res-003", "res-005"]
  */
-function findInsertIndex(
-  reservationIds: UUID[], 
+export function findInsertIndex(
+  reservationIds: UUID[],
   newReservation: Reservation, 
   reservationsById: Record<UUID, Reservation>
 ): number {
-  const newStartSlot = newReservation.startTime ? 
-    new Date(newReservation.startTime).getHours() * 4 + 
-    Math.floor(new Date(newReservation.startTime).getMinutes() / 15) : 0;
-  
+  // Order by the actual instant. Ordering by hour-of-day (the previous
+  // behaviour) sorted a multi-day table index by time of day rather than
+  // chronologically, and read the hour off the machine's local clock rather
+  // than the restaurant's. An unparseable date now sorts last instead of
+  // silently comparing as NaN and defeating every comparison.
+  const startedAt = (reservation?: Reservation): number => {
+    if (!reservation?.startTime) return Number.POSITIVE_INFINITY;
+    const time = new Date(reservation.startTime).getTime();
+    return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+  };
+
+  const newStartedAt = startedAt(newReservation);
+
   for (let i = 0; i < reservationIds.length; i++) {
-    const existingReservation = reservationsById[reservationIds[i]];
-    if (existingReservation && existingReservation.startTime) {
-      const existingStartSlot = new Date(existingReservation.startTime).getHours() * 4 + 
-        Math.floor(new Date(existingReservation.startTime).getMinutes() / 15);
-      
-      if (newStartSlot < existingStartSlot) {
-        return i;
-      }
+    if (newStartedAt < startedAt(reservationsById[reservationIds[i]])) {
+      return i;
     }
   }
-  
+
   return reservationIds.length;
 }
 
@@ -137,7 +140,11 @@ const useTimelineStore = create<TimelineStore>()(
         slotWidth: 60,
         zoom: 1,
         collapsedSectors: {},
-        visibleDate: '2025-10-24',
+        // Placeholder only. The real landing date is resolved after hydration by
+        // useAutoInitialize via TimelineBootstrapService, which guarantees it is a
+        // day that has bookings. A hardcoded date here is what made first-time
+        // visitors open the timeline ten months away from the generated seed.
+        visibleDate: getTodayInTimezone('UTC'),
         viewMode: 'day',
         startHour: 7,
       },
@@ -485,13 +492,6 @@ const useTimelineStore = create<TimelineStore>()(
         sectors: Sector[];
         restaurantConfig: RestaurantConfig;
       }) => {
-        console.log('🔄 Store Initialize With Validation:', {
-          restaurantConfig: data.restaurantConfig,
-          reservationsCount: data.reservations.length,
-          tablesCount: data.tables.length,
-          sectorsCount: data.sectors.length
-        });
-        
         set((state) => {
           const { reservations, tables, sectors, restaurantConfig } = data;
           
@@ -638,6 +638,16 @@ const useTimelineStore = create<TimelineStore>()(
       name: 'timeline-store',
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // reservationsByTable is a derived index and is deliberately not
+          // persisted, so rebuild it from the rehydrated reservations. Without
+          // this it comes back empty and every table's ordering is lost.
+          state.reservationsByTable = Object.values(state.reservationsById).reduce(
+            (acc, reservation) => {
+              (acc[reservation.tableId] ||= []).push(reservation.id);
+              return acc;
+            },
+            {} as Record<UUID, UUID[]>
+          );
           state.setHasHydrated(true);
         }
       },

@@ -2,6 +2,7 @@ import { addDays, addMinutes } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import type { Table, Sector, Reservation, RestaurantConfig, ReservationStatus } from '@/types';
 import { ReservationValidationService } from '@/lib/reservationValidationService';
+import { TimelineBootstrapService } from '@/lib/timelineBootstrapService';
 
 /**
  * Generate reservations dynamically in the selected timezone
@@ -214,7 +215,10 @@ export function generateValidReservationsInTimezone(
   targetReservationsPerDay: number = 10,
   totalDays: number = 90
 ): Reservation[] {
-  const today = new Date();
+  // Day 0 is "today in the restaurant timezone", not today on the visitor's
+  // machine. Anchoring to the machine clock is what let the generated window
+  // drift a day away from what goToToday() resolves to.
+  const today = TimelineBootstrapService.getSeedAnchorDate(timezone);
   const reservations: Reservation[] = [];
   
   // Calculate available slots within operating hours
@@ -643,9 +647,14 @@ export function generateTablesAndSectors() {
 }
 
 /**
- * Generate restaurant config with random hours and restaurant name
+ * Generate restaurant config with random hours and restaurant name.
+ *
+ * `timezone` pins the restaurant timezone; omit it to get a random one (the
+ * demo deliberately varies it). Callers must then feed `config.timezone` back
+ * into the reservation generator — generating bookings in one timezone while
+ * rendering and validating them in another is what silently emptied the grid.
  */
-export function generateRestaurantConfig(_timezone: string): RestaurantConfig {
+export function generateRestaurantConfig(timezone?: string): RestaurantConfig {
   const restaurantNames = [
     'Bistro Central',
     'Café del Sol',
@@ -677,8 +686,8 @@ export function generateRestaurantConfig(_timezone: string): RestaurantConfig {
   // Ensure end hour is after start hour
   const finalEndHour = endHour > startHour ? endHour : startHour + 8;
   
-  // Always generate random timezone for variety
-  const selectedTimezone = timezones[Math.floor(Math.random() * timezones.length)];
+  // Honour an explicit timezone; otherwise pick one at random for variety
+  const selectedTimezone = timezone ?? timezones[Math.floor(Math.random() * timezones.length)];
   
   const config = {
     id: `restaurant-${Date.now()}`,
